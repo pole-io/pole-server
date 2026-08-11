@@ -52,6 +52,32 @@ type PublishRequest struct {
 	ManualImport bool
 }
 
+type GitImportItemResult struct {
+	Path        string              `json:"path"`
+	Name        string              `json:"name"`
+	Description string              `json:"description"`
+	Version     string              `json:"version"`
+	Digest      string              `json:"digest"`
+	Entries     int                 `json:"entries"`
+	Size        int64               `json:"size"`
+	Status      string              `json:"status"`
+	Release     *skilltypes.Release `json:"release,omitempty"`
+	Error       string              `json:"error,omitempty"`
+}
+
+type GitImportResult struct {
+	RepositoryURL string                `json:"repository_url"`
+	Reference     string                `json:"reference"`
+	Tag           string                `json:"tag"`
+	CommitSHA     string                `json:"commit_sha"`
+	RootPath      string                `json:"root_path"`
+	Version       string                `json:"version"`
+	Items         []GitImportItemResult `json:"items"`
+	Succeeded     int                   `json:"succeeded"`
+	Skipped       int                   `json:"skipped"`
+	Failed        int                   `json:"failed"`
+}
+
 type Service struct {
 	store store.SkillMarketplaceStore
 	now   func() time.Time
@@ -212,6 +238,46 @@ func (s *Service) Publish(ctx context.Context, request PublishRequest) (*skillty
 		return nil, err
 	}
 	return release, nil
+}
+
+func (s *Service) ImportGitDiscovery(ctx context.Context, discovery *GitSkillDiscovery, publisher string,
+	visibility skilltypes.Visibility, actor Principal) *GitImportResult {
+	result := &GitImportResult{
+		RepositoryURL: discovery.RepositoryURL, Reference: discovery.Reference, Tag: discovery.Tag,
+		CommitSHA: discovery.CommitSHA, RootPath: discovery.RootPath, Version: discovery.Version,
+		Items: make([]GitImportItemResult, 0, len(discovery.Items)),
+	}
+	for _, item := range discovery.Items {
+		entry := GitImportItemResult{
+			Path: item.Path, Name: item.Name, Description: item.Description, Version: discovery.Version,
+			Digest: item.Digest, Entries: item.Entries, Size: item.Size,
+		}
+		if item.Error != "" {
+			entry.Status, entry.Error = "failed", item.Error
+			result.Failed++
+			result.Items = append(result.Items, entry)
+			continue
+		}
+		release, err := s.Publish(ctx, PublishRequest{
+			Publisher: publisher, Name: item.Name, Version: discovery.Version,
+			Visibility: visibility, Bundle: item.Bundle, Actor: actor,
+			SourceID: "git-import", SourceDigest: item.Digest,
+			SourceTrust: skilltypes.TrustUntrusted, ManualImport: true,
+		})
+		switch {
+		case err == nil:
+			entry.Status, entry.Release = "succeeded", release
+			result.Succeeded++
+		case errors.Is(err, ErrVersionExists):
+			entry.Status, entry.Error = "skipped", err.Error()
+			result.Skipped++
+		default:
+			entry.Status, entry.Error = "failed", err.Error()
+			result.Failed++
+		}
+		result.Items = append(result.Items, entry)
+	}
+	return result
 }
 
 func (s *Service) Search(ctx context.Context, query string, viewer Principal, offset, limit uint32) ([]*skilltypes.Skill, uint32, error) {

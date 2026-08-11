@@ -26,6 +26,7 @@ func TestAccessServerRegistersConsoleAndCLIRoutes(t *testing.T) {
 		"GET /api/skill-marketplace/v1/skills/{publisher}/{name}/releases/{version}/bundle",
 		"GET /api/skill-marketplace/v1/skills/{publisher}/{name}/releases/{version}/bundle-manifest",
 		"POST /api/skill-marketplace/v1/skills/releases/upload",
+		"POST /api/skill-marketplace/v1/skills/releases/import-git/discover",
 		"POST /api/skill-marketplace/v1/skills/releases/import-git",
 		"GET /api/skill-marketplace/v1/reviews",
 		"PUT /api/skill-marketplace/v1/reviews/{releaseId}",

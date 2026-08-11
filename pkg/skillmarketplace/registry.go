@@ -1,6 +1,8 @@
 package skillmarketplace
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,6 +10,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -102,6 +106,46 @@ type githubAsset struct {
 	BrowserDownloadURL string `json:"browser_download_url"`
 	Digest             string `json:"digest"`
 }
+
+type githubGitObject struct {
+	Object struct {
+		Type string `json:"type"`
+		SHA  string `json:"sha"`
+	} `json:"object"`
+}
+
+type GitSkillCandidate struct {
+	Path        string `json:"path"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Digest      string `json:"digest"`
+	Entries     int    `json:"entries"`
+	Size        int64  `json:"size"`
+	Error       string `json:"error,omitempty"`
+	Bundle      []byte `json:"-"`
+}
+
+type GitSkillDiscovery struct {
+	RepositoryURL string              `json:"repository_url"`
+	Reference     string              `json:"reference"`
+	Tag           string              `json:"tag"`
+	CommitSHA     string              `json:"commit_sha"`
+	RootPath      string              `json:"root_path"`
+	Version       string              `json:"version"`
+	Items         []GitSkillCandidate `json:"items"`
+}
+
+type sourceArchiveEntry struct {
+	data       []byte
+	executable bool
+}
+
+const (
+	maxGitArchiveSize             = 64 << 20
+	maxGitArchiveUncompressedSize = 256 << 20
+	maxGitArchiveEntries          = 10000
+	maxGitImportSkills            = 256
+)
 
 func (a *GitRegistryAdapter) List(ctx context.Context, source *skilltypes.RegistrySource) (*RegistryPage, error) {
 	owner, repo, err := parseGitHubRepository(source.URL)
@@ -374,60 +418,353 @@ func sameOriginClient(base *http.Client, origin string) *http.Client {
 	return &copyClient
 }
 
-func (s *RegistrySyncer) ImportGitHubRelease(ctx context.Context, repositoryURL, reference, skillName string) ([]byte, string, error) {
+func (s *RegistrySyncer) DiscoverGitHubSkills(ctx context.Context, repositoryURL, reference, rootPath, versionOverride string) (*GitSkillDiscovery, error) {
 	owner, repo, err := parseGitHubRepository(repositoryURL)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	endpoint := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/%s", url.PathEscape(owner), url.PathEscape(repo), url.PathEscape(reference))
-	request, _ := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	request.Header.Set("Accept", "application/vnd.github+json")
-	response, err := s.client.Do(request)
+	if strings.TrimSpace(reference) == "" {
+		return nil, fmt.Errorf("Git reference must be an explicit tag or release tag")
+	}
+	cleanRoot, err := cleanGitRootPath(rootPath)
 	if err != nil {
-		return nil, "", err
+		return nil, err
+	}
+	tag, commitSHA, err := s.resolveGitHubTag(ctx, owner, repo, reference)
+	if err != nil {
+		return nil, err
+	}
+	version := strings.TrimSpace(versionOverride)
+	if version == "" {
+		version = strings.TrimPrefix(tag, "v")
+	}
+	if err := ValidateVersion(version); err != nil {
+		return nil, fmt.Errorf("Git tag %q is not SemVer; provide an explicit version override: %w", tag, err)
+	}
+	archive, err := s.downloadGitHubArchive(ctx, owner, repo, commitSHA)
+	if err != nil {
+		return nil, err
+	}
+	files, err := readGitHubSourceArchive(archive)
+	if err != nil {
+		return nil, err
+	}
+	items, err := discoverGitSkills(files, cleanRoot)
+	if err != nil {
+		return nil, err
+	}
+	return &GitSkillDiscovery{
+		RepositoryURL: repositoryURL,
+		Reference:     reference,
+		Tag:           tag,
+		CommitSHA:     commitSHA,
+		RootPath:      cleanRoot,
+		Version:       version,
+		Items:         items,
+	}, nil
+}
+
+func (s *RegistrySyncer) resolveGitHubTag(ctx context.Context, owner, repo, reference string) (string, string, error) {
+	tag := reference
+	releaseEndpoint := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/%s", url.PathEscape(owner), url.PathEscape(repo), url.PathEscape(reference))
+	response, err := s.githubJSON(ctx, releaseEndpoint)
+	if err != nil {
+		return "", "", err
+	}
+	if response.StatusCode == http.StatusOK {
+		var release githubRelease
+		if err := decodeGitHubJSON(response, &release); err != nil {
+			return "", "", err
+		}
+		if release.TagName == "" {
+			return "", "", fmt.Errorf("GitHub release %q has no tag", reference)
+		}
+		tag = release.TagName
+	} else {
+		status := response.StatusCode
+		response.Body.Close()
+		if status != http.StatusNotFound {
+			return "", "", fmt.Errorf("GitHub release %q returned HTTP %d", reference, status)
+		}
+	}
+	refEndpoint := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/ref/tags/%s", url.PathEscape(owner), url.PathEscape(repo), url.PathEscape(tag))
+	response, err = s.githubJSON(ctx, refEndpoint)
+	if err != nil {
+		return "", "", err
+	}
+	if response.StatusCode != http.StatusOK {
+		status := response.StatusCode
+		response.Body.Close()
+		return "", "", fmt.Errorf("GitHub tag %q returned HTTP %d; branches are not accepted", tag, status)
+	}
+	var object githubGitObject
+	if err := decodeGitHubJSON(response, &object); err != nil {
+		return "", "", err
+	}
+	for depth := 0; object.Object.Type == "tag" && depth < 5; depth++ {
+		endpoint := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/tags/%s", url.PathEscape(owner), url.PathEscape(repo), url.PathEscape(object.Object.SHA))
+		response, err = s.githubJSON(ctx, endpoint)
+		if err != nil {
+			return "", "", err
+		}
+		if response.StatusCode != http.StatusOK {
+			status := response.StatusCode
+			response.Body.Close()
+			return "", "", fmt.Errorf("resolve annotated GitHub tag %q returned HTTP %d", tag, status)
+		}
+		if err := decodeGitHubJSON(response, &object); err != nil {
+			return "", "", err
+		}
+	}
+	if object.Object.Type != "commit" || !isGitCommitSHA(object.Object.SHA) {
+		return "", "", fmt.Errorf("GitHub tag %q does not resolve to a commit", tag)
+	}
+	return tag, strings.ToLower(object.Object.SHA), nil
+}
+
+func (s *RegistrySyncer) githubJSON(ctx context.Context, endpoint string) (*http.Response, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Accept", "application/vnd.github+json")
+	return s.client.Do(request)
+}
+
+func decodeGitHubJSON(response *http.Response, target any) error {
+	defer response.Body.Close()
+	if err := json.NewDecoder(io.LimitReader(response.Body, 2<<20)).Decode(target); err != nil {
+		return fmt.Errorf("decode GitHub response: %w", err)
+	}
+	return nil
+}
+
+func (s *RegistrySyncer) downloadGitHubArchive(ctx context.Context, owner, repo, commitSHA string) ([]byte, error) {
+	endpoint := fmt.Sprintf("https://api.github.com/repos/%s/%s/zipball/%s", url.PathEscape(owner), url.PathEscape(repo), url.PathEscape(commitSHA))
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Accept", "application/vnd.github+json")
+	response, err := trustedGitHubClient(s.client).Do(request)
+	if err != nil {
+		return nil, err
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return nil, "", fmt.Errorf("GitHub release %q returned HTTP %d", reference, response.StatusCode)
+		return nil, fmt.Errorf("GitHub source archive returned HTTP %d", response.StatusCode)
 	}
-	var release githubRelease
-	if err := json.NewDecoder(io.LimitReader(response.Body, 2<<20)).Decode(&release); err != nil {
-		return nil, "", err
+	archive, err := io.ReadAll(io.LimitReader(response.Body, maxGitArchiveSize+1))
+	if err != nil {
+		return nil, fmt.Errorf("read GitHub source archive: %w", err)
 	}
-	var selected *githubAsset
-	for i := range release.Assets {
-		asset := &release.Assets[i]
-		base := strings.TrimSuffix(strings.ToLower(asset.Name), ".zip")
-		if strings.HasSuffix(strings.ToLower(asset.Name), ".zip") && (base == skillName || selected == nil) {
-			selected = asset
-			if base == skillName {
-				break
-			}
+	if len(archive) > maxGitArchiveSize {
+		return nil, fmt.Errorf("GitHub source archive exceeds %d bytes", maxGitArchiveSize)
+	}
+	return archive, nil
+}
+
+func trustedGitHubClient(base *http.Client) *http.Client {
+	copyClient := *base
+	previous := copyClient.CheckRedirect
+	copyClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if req.URL.Scheme != "https" || req.URL.User != nil || !trustedGitHubHost(req.URL.Hostname()) {
+			return fmt.Errorf("unsafe GitHub archive redirect")
+		}
+		if previous != nil {
+			return previous(req, via)
+		}
+		return nil
+	}
+	return &copyClient
+}
+
+func trustedGitHubHost(host string) bool {
+	return strings.EqualFold(host, "api.github.com") || strings.EqualFold(host, "github.com") || strings.EqualFold(host, "codeload.github.com")
+}
+
+func isGitCommitSHA(value string) bool {
+	if len(value) != 40 {
+		return false
+	}
+	for _, char := range value {
+		if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f') || (char >= 'A' && char <= 'F')) {
+			return false
 		}
 	}
-	if selected == nil {
-		return nil, "", fmt.Errorf("GitHub release has no ZIP asset")
+	return true
+}
+
+func cleanGitRootPath(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" || value == "." {
+		return "", nil
 	}
-	assetURL, err := url.Parse(selected.BrowserDownloadURL)
-	if err != nil || assetURL.User != nil || assetURL.Scheme != "https" || !strings.EqualFold(assetURL.Hostname(), "github.com") {
-		return nil, "", fmt.Errorf("unsafe GitHub release asset URL")
+	if strings.Contains(value, "\\") || strings.ContainsRune(value, 0) || strings.HasPrefix(value, "/") {
+		return "", fmt.Errorf("Git root path must be a safe relative path")
 	}
-	download, _ := http.NewRequestWithContext(ctx, http.MethodGet, selected.BrowserDownloadURL, nil)
-	result, err := s.client.Do(download)
+	cleaned := path.Clean(value)
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") || cleaned != strings.TrimSuffix(value, "/") {
+		return "", fmt.Errorf("Git root path must be canonical and cannot traverse")
+	}
+	return cleaned, nil
+}
+
+func readGitHubSourceArchive(data []byte) (map[string]sourceArchiveEntry, error) {
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
-		return nil, "", err
+		return nil, fmt.Errorf("open GitHub source archive: %w", err)
 	}
-	defer result.Body.Close()
-	if result.StatusCode < 200 || result.StatusCode >= 300 {
-		return nil, "", fmt.Errorf("GitHub asset returned HTTP %d", result.StatusCode)
+	if len(zr.File) == 0 || len(zr.File) > maxGitArchiveEntries {
+		return nil, fmt.Errorf("GitHub source archive entry count must be in 1..%d", maxGitArchiveEntries)
 	}
-	bundle, err := io.ReadAll(io.LimitReader(result.Body, MaxCompressedBundleSize+1))
-	if err != nil || len(bundle) > MaxCompressedBundleSize {
-		return nil, "", fmt.Errorf("read GitHub asset: %w", err)
+	files := make(map[string]sourceArchiveEntry)
+	var prefix string
+	var total int64
+	for _, file := range zr.File {
+		name := strings.TrimSuffix(file.Name, "/")
+		if name == "" || strings.Contains(name, "\\") || strings.ContainsRune(name, 0) || strings.HasPrefix(name, "/") || path.Clean(name) != name || strings.HasPrefix(name, "../") {
+			return nil, fmt.Errorf("GitHub source archive contains unsafe path %q", file.Name)
+		}
+		parts := strings.SplitN(name, "/", 2)
+		if prefix == "" {
+			prefix = parts[0]
+		} else if prefix != parts[0] {
+			return nil, fmt.Errorf("GitHub source archive must have one repository root")
+		}
+		if len(parts) == 1 || file.FileInfo().IsDir() {
+			continue
+		}
+		mode := file.Mode()
+		if mode&mode.Type() != 0 || !mode.IsRegular() {
+			return nil, fmt.Errorf("GitHub source archive contains non-regular entry %q", file.Name)
+		}
+		if total+int64(file.UncompressedSize64) > maxGitArchiveUncompressedSize {
+			return nil, fmt.Errorf("GitHub source archive exceeds %d uncompressed bytes", maxGitArchiveUncompressedSize)
+		}
+		rc, err := file.Open()
+		if err != nil {
+			return nil, err
+		}
+		remaining := maxGitArchiveUncompressedSize - total
+		content, readErr := io.ReadAll(io.LimitReader(rc, remaining+1))
+		closeErr := rc.Close()
+		if readErr != nil || closeErr != nil || int64(len(content)) > remaining {
+			return nil, fmt.Errorf("read GitHub source archive entry %q", file.Name)
+		}
+		total += int64(len(content))
+		relative := parts[1]
+		if _, exists := files[relative]; exists {
+			return nil, fmt.Errorf("GitHub source archive contains duplicate path %q", relative)
+		}
+		files[relative] = sourceArchiveEntry{data: content, executable: mode.Perm()&0o111 != 0}
 	}
-	version := strings.TrimPrefix(release.TagName, "v")
-	if err := ValidateVersion(version); err != nil {
-		return nil, "", err
+	return files, nil
+}
+
+func discoverGitSkills(files map[string]sourceArchiveEntry, rootPath string) ([]GitSkillCandidate, error) {
+	manifestPath := "SKILL.md"
+	if rootPath != "" {
+		manifestPath = rootPath + "/SKILL.md"
 	}
-	return bundle, version, nil
+	candidatePaths := make([]string, 0)
+	if _, ok := files[manifestPath]; ok {
+		candidatePaths = append(candidatePaths, rootPath)
+	} else {
+		prefix := rootPath
+		if prefix != "" {
+			prefix += "/"
+		}
+		seen := map[string]struct{}{}
+		for name := range files {
+			if !strings.HasPrefix(name, prefix) {
+				continue
+			}
+			relative := strings.TrimPrefix(name, prefix)
+			parts := strings.Split(relative, "/")
+			if len(parts) == 2 && parts[1] == "SKILL.md" {
+				candidate := prefix + parts[0]
+				seen[candidate] = struct{}{}
+			}
+		}
+		for candidate := range seen {
+			candidatePaths = append(candidatePaths, candidate)
+		}
+		sort.Strings(candidatePaths)
+	}
+	if len(candidatePaths) == 0 {
+		location := rootPath
+		if location == "" {
+			location = "repository root"
+		}
+		return nil, fmt.Errorf("no Skill found at %s or its direct children", location)
+	}
+	if len(candidatePaths) > maxGitImportSkills {
+		return nil, fmt.Errorf("Git import found %d Skills; maximum is %d", len(candidatePaths), maxGitImportSkills)
+	}
+	items := make([]GitSkillCandidate, 0, len(candidatePaths))
+	for _, candidatePath := range candidatePaths {
+		bundle, err := bundleGitSkill(files, candidatePath)
+		if err != nil {
+			items = append(items, GitSkillCandidate{Path: candidatePath, Error: err.Error()})
+			continue
+		}
+		items = append(items, GitSkillCandidate{
+			Path: candidatePath, Name: bundle.Name, Description: bundle.Description,
+			Digest: bundle.Digest, Entries: bundle.Entries, Size: bundle.Size, Bundle: bundle.Bytes,
+		})
+	}
+	pathsByName := make(map[string][]int)
+	for index := range items {
+		if items[index].Name != "" {
+			pathsByName[items[index].Name] = append(pathsByName[items[index].Name], index)
+		}
+	}
+	for name, indexes := range pathsByName {
+		if len(indexes) < 2 {
+			continue
+		}
+		for _, index := range indexes {
+			items[index].Error = fmt.Sprintf("duplicate Skill name %q in the same Git snapshot", name)
+			items[index].Bundle = nil
+		}
+	}
+	return items, nil
+}
+
+func bundleGitSkill(files map[string]sourceArchiveEntry, candidatePath string) (*BundleInfo, error) {
+	prefix := candidatePath
+	if prefix != "" {
+		prefix += "/"
+	}
+	names := make([]string, 0)
+	for name := range files {
+		if strings.HasPrefix(name, prefix) {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	var buffer bytes.Buffer
+	writer := zip.NewWriter(&buffer)
+	for _, name := range names {
+		entry := files[name]
+		relative := strings.TrimPrefix(name, prefix)
+		header := &zip.FileHeader{Name: relative, Method: zip.Deflate}
+		if entry.executable {
+			header.SetMode(0o755)
+		} else {
+			header.SetMode(0o644)
+		}
+		fileWriter, err := writer.CreateHeader(header)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := fileWriter.Write(entry.data); err != nil {
+			return nil, err
+		}
+	}
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+	return ValidateAndNormalizeBundle(buffer.Bytes())
 }

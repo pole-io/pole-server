@@ -68,6 +68,7 @@ func (h *HTTPServer) GetAccessServer() *restful.WebService {
 	ws.Route(ws.POST("/v1/publishers/{publisher}/keys/{version}/revoke").To(h.revokePublisherKey))
 	ws.Route(ws.POST("/v1/releases").To(h.publishRelease))
 	ws.Route(ws.POST("/v1/skills/releases/upload").To(h.publishRelease))
+	ws.Route(ws.POST("/v1/skills/releases/import-git/discover").To(h.discoverGitRelease))
 	ws.Route(ws.POST("/v1/skills/releases/import-git").To(h.importGitRelease))
 	ws.Route(ws.POST("/v1/releases/{releaseId}/review").To(h.reviewRelease))
 	ws.Route(ws.GET("/v1/reviews").To(h.listReviews))
@@ -289,9 +290,34 @@ func parseSignatureEnvelope(req *restful.Request) ([]byte, time.Time, error) {
 type gitImportRequest struct {
 	RepositoryURL string                `json:"repository_url"`
 	Reference     string                `json:"reference"`
+	RootPath      string                `json:"root_path"`
+	Version       string                `json:"version"`
+	CommitSHA     string                `json:"commit_sha"`
 	Publisher     string                `json:"publisher"`
-	Name          string                `json:"name"`
 	Visibility    skilltypes.Visibility `json:"visibility"`
+}
+
+func (h *HTTPServer) discoverGitRelease(req *restful.Request, rsp *restful.Response) {
+	actor, err := h.principal(req, false)
+	if err != nil {
+		writeError(rsp, err)
+		return
+	}
+	var body gitImportRequest
+	if err := req.ReadEntity(&body); err != nil {
+		writeError(rsp, err)
+		return
+	}
+	if !h.service.CanPublishPublisher(req.Request.Context(), body.Publisher, actor) {
+		writeError(rsp, market.ErrForbidden)
+		return
+	}
+	discovery, err := h.syncer.DiscoverGitHubSkills(req.Request.Context(), body.RepositoryURL, body.Reference, body.RootPath, body.Version)
+	if err != nil {
+		writeError(rsp, err)
+		return
+	}
+	_ = rsp.WriteHeaderAndJson(http.StatusOK, discovery, restful.MIME_JSON)
 }
 
 func (h *HTTPServer) importGitRelease(req *restful.Request, rsp *restful.Response) {
@@ -309,21 +335,32 @@ func (h *HTTPServer) importGitRelease(req *restful.Request, rsp *restful.Respons
 		writeError(rsp, market.ErrForbidden)
 		return
 	}
+	if body.Visibility == "" {
+		body.Visibility = skilltypes.VisibilityPrivate
+	}
 	if body.Visibility == skilltypes.VisibilityPublic {
 		writeError(rsp, market.ErrManualPublicImport)
 		return
 	}
-	bundle, version, err := h.syncer.ImportGitHubRelease(req.Request.Context(), body.RepositoryURL, body.Reference, body.Name)
+	if body.Visibility != skilltypes.VisibilityPrivate {
+		writeError(rsp, fmt.Errorf("Git import visibility must be private"))
+		return
+	}
+	if body.CommitSHA == "" {
+		writeError(rsp, fmt.Errorf("Git import requires commit_sha from the discovery preview"))
+		return
+	}
+	discovery, err := h.syncer.DiscoverGitHubSkills(req.Request.Context(), body.RepositoryURL, body.Reference, body.RootPath, body.Version)
 	if err != nil {
 		writeError(rsp, err)
 		return
 	}
-	release, err := h.service.Publish(req.Request.Context(), market.PublishRequest{Publisher: body.Publisher, Name: body.Name, Version: version, Visibility: body.Visibility, Bundle: bundle, Actor: actor, SourceID: "git-import", SourceTrust: skilltypes.TrustUntrusted, ManualImport: true})
-	if err != nil {
-		writeError(rsp, err)
+	if !strings.EqualFold(discovery.CommitSHA, body.CommitSHA) {
+		writeError(rsp, fmt.Errorf("Git tag moved after preview; discover the repository again before importing"))
 		return
 	}
-	_ = rsp.WriteHeaderAndJson(http.StatusCreated, release, restful.MIME_JSON)
+	result := h.service.ImportGitDiscovery(req.Request.Context(), discovery, body.Publisher, body.Visibility, actor)
+	_ = rsp.WriteHeaderAndJson(http.StatusCreated, result, restful.MIME_JSON)
 }
 
 type reviewRequest struct {

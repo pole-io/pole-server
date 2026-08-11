@@ -33,6 +33,13 @@
 .fileField { grid-column: 1 / -1; padding: 12px; border: 1px dashed var(--app-border-subtle); border-radius: 6px; }
 .fileField input { max-width: 100%; color: var(--app-text-secondary); }
 .fileField small { color: var(--app-text-secondary); font-size: 12px; }
+.gitPreview { display: grid; gap: 12px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--app-border-subtle); }
+.gitPreview > header, .gitSkillRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.gitPreview > header > div, .gitSkillRow > div { display: grid; min-width: 0; gap: 4px; }
+.gitPreview > header span, .gitSkillRow span, .gitSkillRow small { overflow: hidden; color: var(--app-text-secondary); font-size: 12px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.gitSkillList { display: grid; border: 1px solid var(--app-border-subtle); border-radius: 6px; }
+.gitSkillRow { min-width: 0; padding: 12px 14px; border-bottom: 1px solid var(--app-border-subtle); }
+.gitSkillRow:last-child { border-bottom: 0; }
 .workspaceList, .sourcesWorkspace { display: grid; gap: 14px; }
 .reviewRow, .sourceRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--app-border-subtle); }
 .reviewRow > div, .sourceRow > div { display: grid; min-width: 0; gap: 4px; }

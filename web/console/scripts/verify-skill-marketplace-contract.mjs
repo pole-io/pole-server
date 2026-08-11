@@ -31,6 +31,7 @@ assert.match(service, /\/v1\/skills\/\$\{encodeURIComponent\(publisher\)\}\/\$\{
 assert.match(service, /principalType, principalId/, '更新 grants 必须使用后端 camelCase 主体字段');
 assert.match(service, /PUT \/v1\/reviews\/\{releaseId\}/, '审核接口必须保持 GET /v1/reviews + PUT /v1/reviews/{releaseId}');
 assert.match(service, /\/v1\/skills\/releases\/upload[\s\S]*\/v1\/skills\/releases\/import-git/, '上传和 Git import 必须保持后端约定路径');
+assert.match(service, /import-git\/discover[\s\S]*commit_sha/, 'Git 导入必须先发现不可变 commit 并在导入时回传');
 assert.doesNotMatch(service, /releases\/\$\{encodeURIComponent\(version\)\}\/bundle['`]/, 'raw ZIP /bundle 不能被当作 JSON 读取');
 for (const field of ['latestVersion', 'displayName', 'publishedAt', 'scanStatus', 'signatureStatus', 'sourceURL']) {
   assert.ok(service.includes(field), `服务必须兼容后端 camelCase 字段 ${field}`);
@@ -40,6 +41,10 @@ assert.doesNotMatch(service, /Content-Type['"]\s*:\s*['"]multipart\/form-data/, 
 assert.match(list, /搜索 Skill[\s\S]*来源筛选[\s\S]*可见性筛选[\s\S]*状态筛选/, '目录必须提供搜索、来源、可见性与状态筛选');
 assert.match(list, /上传 Bundle[\s\S]*Git 导入[\s\S]*审核工作台[\s\S]*Registry Source/, '目录必须提供发布、导入、审核和来源管理入口');
 assert.match(list, /visibility === 'public' && !signature/, '公共 Release 必须在提交前要求 detached signature');
+for (const text of ['Skill 根目录', 'SemVer 覆盖', '扫描 Skill', '导入全部', 'Git Skill 发现预览']) {
+  assert.ok(list.includes(text), `Git 导入必须提供 ${text}`);
+}
+assert.match(list, /成功 \/.*跳过 \/.*失败/, 'Git 批量导入必须展示逐项结果摘要');
 assert.match(list, /accept="application\/json,.json"[\s\S]*algorithm=Ed25519、signedAt（RFC3339）和 signature（base64）/, '公共签名必须明确为 detached JSON envelope，不得暗示原始 .sig 文件');
 assert.match(list, /EditorDrawer[\s\S]*width="workspace"/, '审核和来源管理必须复用 EditorDrawer 工作区宽度');
 assert.doesNotMatch(list, /<Button[^>]*>\s*(执行 Skill|安装 Skill)\s*<\/Button>/, '目录不得提供 Skill 执行或安装动作');

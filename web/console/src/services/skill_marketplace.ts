@@ -224,14 +224,50 @@ export async function uploadMarketplaceSkillRelease(input: {
   return apiRequest({ action: `${SkillMarketplaceAPI}/v1/skills/releases/upload`, data: form });
 }
 
-/** POST /v1/skills/releases/import-git，由服务端从 Tag 或 Release 拉取并冻结内容。 */
-export async function importMarketplaceSkillFromGit(input: {
+export interface GitImportRequest {
   repository_url: string;
   reference: string;
+  root_path: string;
+  version: string;
   publisher: string;
-  name: string;
   visibility: SkillVisibility;
-}) {
+  commit_sha?: string;
+}
+
+export interface GitSkillCandidate {
+  path: string;
+  name: string;
+  description: string;
+  digest: string;
+  entries: number;
+  size: number;
+  error?: string;
+}
+
+export interface GitSkillDiscovery {
+  repository_url: string;
+  reference: string;
+  tag: string;
+  commit_sha: string;
+  root_path: string;
+  version: string;
+  items: GitSkillCandidate[];
+}
+
+export interface GitImportResult extends GitSkillDiscovery {
+  items: Array<GitSkillCandidate & { status: 'succeeded' | 'skipped' | 'failed'; error?: string }>;
+  succeeded: number;
+  skipped: number;
+  failed: number;
+}
+
+/** 先解析 Tag/Release 到不可变 commit，只预览根 Skill 或目标目录的一级 Skill。 */
+export async function discoverMarketplaceSkillsFromGit(input: GitImportRequest): Promise<GitSkillDiscovery> {
+  return apiRequest({ action: `${SkillMarketplaceAPI}/v1/skills/releases/import-git/discover`, data: input });
+}
+
+/** 基于预览返回的 commit SHA 重新校验 Tag，然后逐项冻结并导入。 */
+export async function importMarketplaceSkillsFromGit(input: GitImportRequest & { commit_sha: string }): Promise<GitImportResult> {
   return apiRequest({ action: `${SkillMarketplaceAPI}/v1/skills/releases/import-git`, data: input });
 }
 

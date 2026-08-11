@@ -130,6 +130,30 @@ func TestManualGitImportCannotBypassPublicSignature(t *testing.T) {
 	require.Empty(t, storage.releases)
 }
 
+func TestImportGitDiscoveryContinuesAfterIndividualFailure(t *testing.T) {
+	storage := newMemorySkillStore()
+	storage.publishers["pole"] = &skilltypes.Publisher{ID: "publisher-1", Name: "pole", OwnerID: "user-1"}
+	validBundle := testZIP(t, zipTestEntry{name: "SKILL.md", content: "---\nname: valid-skill\ndescription: valid\n---\n", mode: 0o644})
+	validInfo, err := ValidateAndNormalizeBundle(validBundle)
+	require.NoError(t, err)
+	discovery := &GitSkillDiscovery{
+		RepositoryURL: "https://github.com/pole-io/skills", Reference: "v1.0.0", Tag: "v1.0.0",
+		CommitSHA: gitImportCommit, RootPath: "skills", Version: "1.0.0",
+		Items: []GitSkillCandidate{
+			{Path: "skills/broken", Name: "broken-skill", Digest: "invalid", Bundle: []byte("not a zip")},
+			{Path: "skills/valid", Name: "valid-skill", Digest: validInfo.Digest, Bundle: validInfo.Bytes},
+		},
+	}
+
+	result := NewService(storage).ImportGitDiscovery(context.Background(), discovery, "pole", skilltypes.VisibilityPrivate, Principal{Type: "user", ID: "user-1"})
+	require.Equal(t, 1, result.Succeeded)
+	require.Equal(t, 1, result.Failed)
+	require.Zero(t, result.Skipped)
+	require.Equal(t, []string{"failed", "succeeded"}, []string{result.Items[0].Status, result.Items[1].Status})
+	require.Contains(t, storage.releases, "pole/valid-skill@1.0.0")
+	require.Equal(t, validInfo.Digest, storage.releases["pole/valid-skill@1.0.0"].SourceDigest)
+}
+
 func TestDownloadBlocksPrivateQuarantinedBundleForOwnerAndGrantee(t *testing.T) {
 	storage := newMemorySkillStore()
 	storage.skills["pole/private-skill"] = &skilltypes.Skill{ID: "skill-1", Publisher: "pole", Name: "private-skill", Visibility: skilltypes.VisibilityPrivate, OwnerID: "owner"}

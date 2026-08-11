@@ -17,13 +17,16 @@ import {
   MarketplaceReview,
   MarketplaceSkill,
   RegistrySource,
+  GitImportResult,
+  GitSkillDiscovery,
   SkillVisibility,
   createRegistrySource,
   decideMarketplaceReview,
+  discoverMarketplaceSkillsFromGit,
   describeMarketplaceReviews,
   describeMarketplaceSkills,
   describeRegistrySources,
-  importMarketplaceSkillFromGit,
+  importMarketplaceSkillsFromGit,
   syncRegistrySource,
   uploadMarketplaceSkillRelease,
 } from 'services/skill_marketplace';
@@ -67,8 +70,9 @@ const statusLabel = (status?: string) => ({
 const sourceLabel = (source?: string) => ({ pole: 'Pole 本地', git: 'Git', http_index: 'HTTP Registry' }[source || ''] || source || '未标注');
 
 const initialUpload = { publisher: '', name: '', version: '', visibility: 'private' as SkillVisibility };
-const initialGit = { repository_url: '', reference: '', publisher: '', name: '', visibility: 'private' as SkillVisibility };
+const initialGit = { repository_url: '', reference: '', root_path: '', version: '', publisher: '', visibility: 'private' as SkillVisibility };
 const initialSource = { name: '', url: '', type: 'http_index', trust_level: 'untrusted', enabled: true };
+const formatBytes = (value: number) => value < 1024 ? `${value} B` : value < 1024 * 1024 ? `${(value / 1024).toFixed(1)} KiB` : `${(value / 1024 / 1024).toFixed(1)} MiB`;
 const SkillMarketplacePage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -88,6 +92,8 @@ const SkillMarketplacePage: React.FC = () => {
   const [bundle, setBundle] = React.useState<File | null>(null);
   const [signature, setSignature] = React.useState<File | null>(null);
   const [gitImport, setGitImport] = React.useState(initialGit);
+  const [gitDiscovery, setGitDiscovery] = React.useState<GitSkillDiscovery | null>(null);
+  const [gitResult, setGitResult] = React.useState<GitImportResult | null>(null);
   const [reviews, setReviews] = React.useState<MarketplaceReview[]>([]);
   const [sources, setSources] = React.useState<RegistrySource[]>([]);
   const [sourceDraft, setSourceDraft] = React.useState(initialSource);
@@ -116,6 +122,12 @@ const SkillMarketplacePage: React.FC = () => {
     setSubmitting(false);
   };
 
+  const updateGitImport = (patch: Partial<typeof initialGit>) => {
+    setGitImport((current) => ({ ...current, ...patch }));
+    setGitDiscovery(null);
+    setGitResult(null);
+  };
+
   const openReviews = async () => {
     setDrawer('reviews');
     try { setReviews(await describeMarketplaceReviews()); } catch { setReviews([]); }
@@ -140,17 +152,33 @@ const SkillMarketplacePage: React.FC = () => {
       setUpload(initialUpload); setBundle(null); setSignature(null); closeDrawer(); void refresh();
     } catch (reason) { notifyError(reason instanceof Error ? reason.message : 'Bundle 上传失败'); setSubmitting(false); }
   };
-  const submitGitImport = async () => {
-    if (!gitImport.repository_url || !gitImport.reference || !gitImport.publisher || !gitImport.name) {
-      notifyError('请填写仓库地址、Tag/Release、发布身份和 Skill 名称。');
+  const discoverGitImport = async () => {
+    if (!gitImport.repository_url || !gitImport.reference || !gitImport.publisher) {
+      notifyError('请填写仓库地址、Tag/Release 和 Publisher。');
       return;
     }
     setSubmitting(true);
     try {
-      await importMarketplaceSkillFromGit(gitImport);
-      notifyInfo('Git Release 已提交导入；系统会固定其摘要后再发布。');
-      setGitImport(initialGit); closeDrawer(); void refresh();
-    } catch (reason) { notifyError(reason instanceof Error ? reason.message : 'Git 导入失败'); setSubmitting(false); }
+      const discovery = await discoverMarketplaceSkillsFromGit(gitImport);
+      setGitDiscovery(discovery);
+      setGitResult(null);
+      notifyInfo(`已从 ${discovery.tag} 发现 ${discovery.items.length} 个 Skill，请确认后导入。`);
+    } catch (reason) { notifyError(reason instanceof Error ? reason.message : 'Git Skill 发现失败'); }
+    finally { setSubmitting(false); }
+  };
+  const submitGitImport = async () => {
+    if (!gitDiscovery || gitResult) {
+      await discoverGitImport();
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const result = await importMarketplaceSkillsFromGit({ ...gitImport, commit_sha: gitDiscovery.commit_sha });
+      setGitResult(result);
+      notifyInfo(`Git 导入完成：${result.succeeded} 成功，${result.skipped} 跳过，${result.failed} 失败。`);
+      void refresh();
+    } catch (reason) { notifyError(reason instanceof Error ? reason.message : 'Git 导入失败'); }
+    finally { setSubmitting(false); }
   };
   const decideReview = async (review: MarketplaceReview, decision: 'approved' | 'rejected') => {
     try {
@@ -234,14 +262,22 @@ const SkillMarketplacePage: React.FC = () => {
         </div>
       </EditorDrawer>
 
-      <EditorDrawer visible={drawer === 'git'} width="standard" title="从 Git 导入 Release" description="只接受明确的 Tag 或 Release；服务端在导入后冻结 Bundle 摘要，不跟随分支变化。" onClose={closeDrawer} footer={<EditorDrawerActions onCancel={closeDrawer} onSubmit={submitGitImport} submitText="提交导入" submitting={submitting} />}>
+      <EditorDrawer visible={drawer === 'git'} width="wide" title="从 Git 导入 Release" description="只接受明确的 Tag 或 Release；先解析到不可变 commit 并预览 Skill，再逐项冻结 Bundle 摘要。" onClose={closeDrawer} footer={<EditorDrawerActions onCancel={closeDrawer} onSubmit={submitGitImport} submitText={gitResult ? '重新扫描' : gitDiscovery ? `导入全部 ${gitDiscovery.items.length} 个 Skill` : '扫描 Skill'} submitting={submitting} />}>
         <div className={style.drawerForm}>
-          <label><span>仓库地址</span><Input value={gitImport.repository_url} placeholder="https://github.com/org/repo" onChange={(value) => setGitImport({ ...gitImport, repository_url: value })} /></label>
-          <label><span>Tag / Release</span><Input value={gitImport.reference} placeholder="v1.2.0" onChange={(value) => setGitImport({ ...gitImport, reference: value })} /></label>
-          <label><span>Publisher</span><Input value={gitImport.publisher} onChange={(value) => setGitImport({ ...gitImport, publisher: value })} /></label>
-          <label><span>Skill 名称</span><Input value={gitImport.name} onChange={(value) => setGitImport({ ...gitImport, name: value })} /></label>
-          <label><span>可见性</span><Select options={visibilityOptions.slice(1)} value={gitImport.visibility} onChange={(value: SkillVisibility) => setGitImport({ ...gitImport, visibility: value })} /></label>
+          <label><span>仓库地址</span><Input value={gitImport.repository_url} placeholder="https://github.com/org/repo" onChange={(value) => updateGitImport({ repository_url: value })} /></label>
+          <label><span>Tag / Release</span><Input value={gitImport.reference} placeholder="v1.2.0" onChange={(value) => updateGitImport({ reference: value })} /></label>
+          <label><span>Skill 根目录</span><Input value={gitImport.root_path} placeholder="留空表示仓库根目录；多 Skill 如 skills" onChange={(value) => updateGitImport({ root_path: value })} /></label>
+          <label><span>SemVer 覆盖（可选）</span><Input value={gitImport.version} placeholder="Tag 非 SemVer 时必填，如 1.2.0" onChange={(value) => updateGitImport({ version: value })} /></label>
+          <label><span>Publisher</span><Input value={gitImport.publisher} placeholder="所有发现的 Skill 归属此 Publisher" onChange={(value) => updateGitImport({ publisher: value })} /></label>
+          <label><span>可见性</span><Select options={[{ label: '私有', value: 'private' }]} value={gitImport.visibility} onChange={(value: SkillVisibility) => updateGitImport({ visibility: value })} /></label>
         </div>
+        {gitDiscovery && <section className={style.gitPreview} aria-label="Git Skill 发现预览">
+          <header><div><strong>{gitResult ? '导入结果' : `已发现 ${gitDiscovery.items.length} 个 Skill`}</strong><span>{gitDiscovery.tag} · {gitDiscovery.version} · commit <code>{gitDiscovery.commit_sha.slice(0, 12)}</code></span></div>{gitResult && <Tag theme={gitResult.failed ? 'warning' : 'success'} variant="outline">{gitResult.succeeded} 成功 / {gitResult.skipped} 跳过 / {gitResult.failed} 失败</Tag>}</header>
+          <div className={style.gitSkillList}>{(gitResult?.items || gitDiscovery.items).map((item) => <article className={style.gitSkillRow} key={`${item.path}/${item.name}`}>
+            <div><strong>{item.name || '无效 Skill'}</strong><span>{item.path || '仓库根目录'} · {formatBytes(item.size || 0)} · {item.entries || 0} 个文件</span><small title={item.digest}>{item.digest ? `SHA-256 ${item.digest.slice(0, 16)}…` : '未生成摘要'}{item.error ? ` · ${item.error}` : ''}</small></div>
+            {'status' in item ? <Tag theme={item.status === 'succeeded' ? 'success' : item.status === 'failed' ? 'danger' : 'warning'} variant="outline">{item.status === 'succeeded' ? '成功' : item.status === 'failed' ? '失败' : '跳过'}</Tag> : item.error && <Tag theme="danger" variant="outline">无法导入</Tag>}
+          </article>)}</div>
+        </section>}
       </EditorDrawer>
 
       <EditorDrawer visible={drawer === 'reviews'} width="workspace" title="公共 Release 审核工作台" description="审核决定只切换 Release 状态；已发布 Bundle、版本与摘要始终不可编辑。" onClose={closeDrawer} footer={false}>
