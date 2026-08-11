@@ -535,12 +535,19 @@ export const Drawer: React.FC<any> = ({
   closeButtonClassName,
 }) => {
   if (!visible) return null;
+  const presetSizes: Record<string, string> = {
+    compact: '560px',
+    standard: '720px',
+    wide: '960px',
+    workspace: '1180px',
+  };
+  const resolvedSize = presetSizes[String(size)] || size;
   const builtInSizes = ['small', 'medium', 'large', 'full'];
-  const hasBuiltInSize = builtInSizes.includes(String(size));
-  const fluentSize = hasBuiltInSize ? size : 'large';
+  const hasBuiltInSize = builtInSizes.includes(String(resolvedSize));
+  const fluentSize = hasBuiltInSize ? resolvedSize : 'large';
   const drawerStyle = hasBuiltInSize
     ? style
-    : { ...style, width: size, maxWidth: 'calc(100vw - 32px)' };
+    : { ...style, width: resolvedSize, maxWidth: 'calc(100vw - 32px)' };
   return (
     <OverlayDrawer
       className={className}

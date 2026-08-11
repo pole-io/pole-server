@@ -1,0 +1,54 @@
+.drawer {
+  background: var(--app-surface);
+}
+
+.header {
+  padding: 22px 28px 18px;
+  border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.title {
+  display: grid;
+  gap: 4px;
+
+  strong {
+    color: var(--app-text);
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 28px;
+    letter-spacing: -0.01em;
+  }
+
+  span {
+    max-width: 720px;
+    color: var(--app-text-secondary);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 20px;
+  }
+}
+
+.body {
+  padding: 0;
+}
+
+.footer {
+  padding: 14px 28px;
+  border-top: 1px solid var(--app-border-subtle);
+  background: var(--app-surface);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .header,
+  .footer {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+}
