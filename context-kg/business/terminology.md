@@ -1,8 +1,8 @@
 ---
 title: 领域术语表
 tags: [business, terminology]
-links: [domain-models, business-rules, auth-system, adr-console-agent-resource-workbench, adr-system-configuration-control-plane, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding, adr-system-namespace-kind, adr-ai-resource-environment-binding, adr-config-template-client-rendering, adr-environment-promotion-topology]
-updated: 2026-08-10
+links: [domain-models, business-rules, auth-system, skill-marketplace, adr-skill-marketplace-federation, adr-console-agent-resource-workbench, adr-system-configuration-control-plane, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding, adr-system-namespace-kind, adr-ai-resource-environment-binding, adr-config-template-client-rendering, adr-environment-promotion-topology]
+updated: 2026-08-11
 sources: 0
 ---
 
@@ -49,6 +49,12 @@ sources: 0
 | Pole Agent | Pole Agent | Console 提供的一等对话主体，内部使用模型和 MCP 工具操作 Pole，写操作必须等待人工确认 |
 | Pole Agent Profile | Pole Agent Profile | Pole Agent 的版本化行为配置，包含 Prompt、模型 profile、MCP 工具集和运行限制，不包含密钥明文 |
 | Agent 调用作用域 | Agent Namespace Scope | 单次 Pole Agent Turn 可读取或修改的显式 Namespace 集合；普通写操作只能作用于一个环境 |
+| Skill 发布者 | Skill Publisher | 拥有稳定 slug、成员授权、信任状态和版本化签名公钥的 Marketplace 发布身份；不等同于 Namespace |
+| Skill | Agent Skill | 以 `publisher/name` 定位的可发布逻辑资产；不等同于 MCP Tool 或 A2A Agent Card 中的能力声明 |
+| Skill Release | Skill Release | 精确绑定 SemVer、Bundle SHA-256、来源和审核证据的不可变发布版本 |
+| Skill Bundle | Skill Bundle | 以根 `SKILL.md` 为必需入口、可携带 scripts/references/assets 的 Agent Skills 开放格式目录快照 |
+| Registry 来源 | Registry Source | 可周期同步的 Pole、Git 或 HTTP Skill 目录来源，拥有信任等级、同步水位和错误状态 |
+| Bundle 存储 | Bundle Store | 按内容摘要保存、读取、检查和回收已验证 Bundle 的存储 seam；默认 Adapter 为 MySQL BLOB |
 | 启动配置 | Bootstrap Configuration | 让 Console 能够启动并定位外部依赖的最小不可热更新配置，包括配置源、凭证引用和紧急开关 |
 | Console 系统设置 | Console System Settings | 面向管理员的类型化运行配置页面；底层使用 Pole 配置中心的草稿、发布、历史和回滚能力 |
 | 系统配置定义 | Setting Definition | 描述系统设置的类型、默认值、校验、敏感级别、归属组件、兼容版本和生效方式 |
@@ -63,6 +69,8 @@ sources: 0
 - [[domain-models]]
 - [[business-rules]]
 - [[auth-system]]
+- [[skill-marketplace]]
+- [[adr-skill-marketplace-federation]]
 - [[adr-console-agent-resource-workbench]]
 - [[adr-system-configuration-control-plane]]
 - [[adr-rpc-first-governance-scope]]

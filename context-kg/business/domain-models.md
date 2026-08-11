@@ -1,8 +1,8 @@
 ---
 title: 核心业务实体
 tags: [business, domain-model]
-links: [terminology, business-rules, namespace, service-discovery, config-center, governance-rules, ai-features, auth-system, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding, adr-system-namespace-kind, adr-ai-resource-environment-binding, adr-config-template-client-rendering, adr-environment-promotion-topology]
-updated: 2026-08-10
+links: [terminology, business-rules, namespace, service-discovery, config-center, governance-rules, ai-features, auth-system, skill-marketplace, adr-skill-marketplace-federation, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding, adr-system-namespace-kind, adr-ai-resource-environment-binding, adr-config-template-client-rendering, adr-environment-promotion-topology]
+updated: 2026-08-11
 sources: 5
 ---
 
@@ -33,6 +33,11 @@ sources: 5
 | MCP Deployment | [[ai-features]] | Namespace 中的 MCP Server 环境实例 |
 | Agent Definition | [[adr-ai-resource-environment-binding]] | 控制面跨环境 Agent 聚合根，由稳定 ID 标识 |
 | Agent Deployment | [[ai-features]] | Namespace 中的 A2A Agent 环境实例 |
+| Skill Publisher | [[skill-marketplace]] | Marketplace 的发布身份、成员与签名信任聚合 |
+| Skill | [[skill-marketplace]] | 以 `publisher/name` 定位的跨 Registry 逻辑资产 |
+| Skill Release | [[adr-skill-marketplace-federation]] | 绑定精确 SemVer、Bundle 摘要、签名和审核证据的不可变版本 |
+| Skill Bundle | [[adr-skill-marketplace-federation]] | 经安全验证并按 SHA-256 内容寻址的 Agent Skills 目录快照 |
+| Registry Source | [[adr-skill-marketplace-federation]] | 可定期同步的 Pole、Git 或 HTTP 外部目录及其信任/健康状态 |
 | System Role | [[auth-system]] | 固定权限集合，只维护与 User、UserGroup 的成员关系 |
 
 实体之间的核心关系：
@@ -106,6 +111,17 @@ Agent Definition
   -> Agent Environment Binding
     -> Namespace + Agent Deployment
 
+Skill Publisher
+  -> Skill (publisher/name)
+    -> Skill Release (SemVer + Bundle digest)
+      -> Release Review
+      -> Immutable Skill Bundle
+  -> Publisher Signing Key
+
+Registry Source
+  -> Synchronized Catalog Snapshot
+  -> Frozen Skill Release
+
 User -> System Role
 User -> UserGroup -> System Role
 System Role -> Immutable Policy
@@ -123,6 +139,8 @@ System Role -> Immutable Policy
 - [[governance-rules]]
 - [[ai-features]]
 - [[auth-system]]
+- [[skill-marketplace]]
+- [[adr-skill-marketplace-federation]]
 - [[adr-rpc-first-governance-scope]]
 - [[adr-service-contract-reporting-and-visualization]]
 - [[adr-logical-service-environment-binding]]

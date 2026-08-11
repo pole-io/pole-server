@@ -1584,6 +1584,24 @@ sources: 0
   - 配置模板内容、格式、Schema 和引擎改为 Namespace 草稿，组合发布读取环境定义；全局只保留逻辑身份信息。
   - 完成旧环境发布快照兼容初始化、全量测试、OrbStack 部署与真实浏览器验收；Adapter、Bundle 和晋升工作台仍待实现。
 
+## [2026-08-11] design | Skill Marketplace 与 pole-ai-cli 分工边界
+
+- 新增页面：skill-marketplace、adr-skill-marketplace-federation。
+- 更新页面：terminology、domain-models、index、todo。
+- 变更摘要：
+  - 定义 `publisher/name`、不可变 SemVer Release、Agent Skills Bundle、发布审核和多源 Registry 联邦。
+  - 确立 `BundleStore` 深模块与默认 MySQL BLOB Adapter，以及大小、路径、摘要、签名和回收规则。
+  - Control Plane 只管理与分发，独立 `pole-ai-cli` 拥有安装、升级、lockfile、回滚和 Agent Adapter。
+
+## [2026-08-11] implement | Skill Marketplace 首期纵向切片
+
+- 更新页面：skill-marketplace、adr-skill-marketplace-federation、ai-features、todo、index。
+- 变更摘要：
+  - 实现规范化 Agent Skills ZIP、MySQL BundleStore、签名/扫描/审核、私有 grant、公共匿名读和多源持久同步。
+  - Console 增加 Marketplace 目录、深链详情、Bundle manifest 安全预览、发布/审核/Registry/授权管理。
+  - 新建 `pole-ai-cli`，提供七个命令、三类 Agent Adapter、精确 lock 与本地投影完整性验证。
+  - 目标测试、前端构建、CLI Clippy、specification Go/Rust 契约和浏览器 fixture 通过；真实外部集成仍待验收。
+
 ## 相关页面
 
 - [[index]]

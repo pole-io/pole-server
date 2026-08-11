@@ -12796,3 +12796,54 @@ Template + Value 组合版本，同时保留组件快照的不可变性、复用
 - 迁移读取优先采用当前环境 active 正式组合版本，其次当前环境最新版本，最后才回退旧全局草稿；真实浏览器将 `spec-governance` 的旧发布快照无损初始化并保存为 draft version 1。
 - Console 模板详情头部常驻“当前环境定义”选择器，目录不再展示可能过期的全局格式/参数数，而标记“按环境”；Value Tab 删除重复环境下拉。拓扑页可编辑基线边与 lane/base 绑定并实时校验。
 - `go test -tags nomsgpack -p 1 ./...`、前端 `build:test`、release 构建、context-kg lint 与限定范围 `git diff --check` 通过。OrbStack 镜像为 `sha256:9995c3aecb8afc4bd280e35607dc58a4d51c0733fb73e69ff9f75b7157c3e07a`，Pod Ready 且无新错误日志；浏览器验收截图为 `output/playwright/environment-promotion-topology.png` 与 `output/playwright/config-template-environment-draft.png`。
+
+## Skill Marketplace 与 pole-ai-cli（2026-08-11）
+
+目标：在 AI 工具下新增面向私有、Pole 公共与外部 Registry 的 Skill Marketplace，并以独立
+`pole-ai-cli` 完成本地安装、升级、校验与 Agent 目录适配。
+
+- [x] 通过分轮产品设计确认 Bundle、公开市场、外部 Registry、审核、签名和 CLI 边界。
+- [x] 归档 Skill Marketplace 领域模型、长期 ADR、接口契约与知识库索引。
+- [x] 实现 Skill、Publisher、Release、Review、Registry Source 与定期同步的后端闭环。
+- [x] 实现 `BundleStore` 深模块及默认 MySQL BLOB Adapter，包含摘要、限额、安全解包和回收。
+- [x] 实现 Skill 私有授权、公共匿名读、Ed25519 签名与基础供应链扫描。
+- [x] 实现 Console Marketplace 列表、详情、版本/Bundle 浏览、发布、审核、私有 grant 和 Registry Source 管理。
+- [x] 新建 `pole-ai-cli`，实现 search/show/install/upgrade/list/verify/remove 与 Codex、Claude Code、通用目录 Adapter。
+- [x] 完成 specification 工作区资源契约、跨仓 API 对齐与自动化测试。
+- [ ] specification 发布升级后，将 Skill 接入通用 Pole RBAC 策略编辑器和统一审计历史。
+- [ ] 完成 Console 真实浏览器、黑暗主题、窄视口、后端集成和 CLI 临时目录端到端验收。
+
+### Review
+
+- 后端形成 `HTTPServer -> Service -> SkillMarketplaceStore/BundleStore -> MySQL` 纵向切片；Bundle 规范化
+  ZIP 使用 16 MiB/64 MiB/2048 项限制、固定顺序/时间、0644/0755 权限和 canonical SHA-256。
+- 公开本地发布使用 Ed25519 JSON signature envelope，未受信 Publisher 进入审核；所有非管理员只能下载
+  `published` Bundle。私有 Skill grant 支持 User、UserGroup、Role，并在列表与详情使用相同主体展开。
+- 外部同步实现 Pole index、同源 HTTP index 和 GitHub Release ZIP asset；同步状态可恢复，原始来源摘要与
+  canonical digest 分开保存，版本摘要漂移按 conflict 处理。手工 Git import 只允许 private。
+- `pole-ai` 已实现七个命令、三种目录 Adapter、内容寻址 Store、精确 lock、默认不跨 major 升级、原子投影，
+  并验证内容/类型/权限/缺失/额外文件，拒绝覆盖或删除非 CLI 资产。
+- `go test ./pkg/skillmarketplace ./plugin/store/mysql ./plugin/apiserver/httpserver/skillmarketplace
+  ./plugin/apiserver/httpserver`、CLI 9 项测试/Clippy、Console 专项/Oxlint/build 与 specification Go/Rust
+  测试通过。全量 `go test ./...` 仅在共享既有观测性测试中失败：expected `0`、actual `0.0003`。
+- Playwright fixture 已验证目录到详情深链、刷新、复制、文本/二进制预览及 720px 暗色布局，截图为
+  `output/playwright/skill-marketplace-detail-dark-narrow.png`。这不是实际 Marketplace API/MySQL 授权证据。
+- 当前未完成边界：真实 MySQL/API 与实际 GitHub/HTTP Registry 联调、统一审计、正式 specification 依赖升级、
+  外部恶意软件/SBOM 扫描、Git 凭证与非 GitHub 仓库 Adapter。生产 MySQL 还需保证
+  `max_allowed_packet` 覆盖 16 MiB Bundle 预算。
+
+## Skill Marketplace develop 交付与 OrbStack 更新（2026-08-12）
+
+目标：将已验证的 Skill Marketplace 按功能边界整理为可审查提交，进入并推送 `develop`，随后重建并更新
+OrbStack，完成真实 MySQL/API、Console 与集群运行态验收。
+
+- [x] 审计 control-plane、specification、pole-ai-cli 的分支、远端、脏改动和提交边界。
+- [ ] 仅暂存并提交 Skill Marketplace 相关后端、Console、知识库和契约改动。
+- [ ] 处理 specification develop 合并/推送与 pole-ai-cli 新仓库远端边界。
+- [ ] 使用 `kubectl --context orbstack` 重建并部署 control-plane。
+- [ ] 验证 Pod、日志、MySQL schema、公共/私有 API、Console 深链和 CLI 安装链路。
+- [ ] 记录实际 commit、push、镜像、Pod 与未完成边界。
+
+### Review
+
+- 待交付完成后补充。

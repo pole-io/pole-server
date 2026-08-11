@@ -2,7 +2,7 @@
 title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-08-10
+updated: 2026-08-11
 sources: 0
 ---
 
@@ -38,6 +38,7 @@ sources: 0
 - [[config-center]] — 配置中心：版本化配置文件、灰度发布、Watch 长轮询机制 | business, feature, config
 - [[governance-rules]] — 治理规则：路由、限流、熔断、故障探测、泳道、无损规则 | business, feature, governance
 - [[admin]] — 管理后台：AdminOperateServer 接口与跨域运维操作 | business, feature, admin
+- [[skill-marketplace]] — 多源 Skill 发布、审核与分发 | business, feature, ai, skill, marketplace
 
 ## 技术知识域（technical/）
 
@@ -60,7 +61,7 @@ sources: 0
 - [[cache-layer]] — 缓存子类型、增量刷新循环、AI 缓存子包与按需开启机制 | cache, performance
 - [[auth-system]] — 认证（Authentication）与授权（Authorization）插件接口、拦截器链与 Token 流程 | auth, security
 - [[common-infra]] — 日志、EventHub、Batch Controller、OTel 指标、同步原语与通用工具 | infra, logging, eventhub
-- [[ai-features]] — MCP、A2A Registry 与 Pole Agent 工作台 | ai, mcp
+- [[ai-features]] — MCP、A2A、Pole Agent 与 Skill Marketplace | ai, mcp, a2a, skill, marketplace
 
 ### 技术约定（technical/conventions/）
 
@@ -92,6 +93,7 @@ sources: 0
 - [[adr-environment-promotion-topology]] — 全局晋升 DAG、lane 回归与跨资源 Bundle | adr, namespace, environment, promotion, lane, release, console
 - [[adr-ai-resource-environment-binding]] — Agent/MCP 逻辑定义、环境实例与调用作用域 | adr, ai, agent, mcp, namespace, domain-model
 - [[adr-plugin-extension-registry]] — 官方插件装配、隔离与销毁契约 | adr, plugin, registry, extension, runtime
+- [[adr-skill-marketplace-federation]] — 多源 Skill、Bundle 与 CLI 边界 | adr, ai, skill, marketplace, registry, supply-chain, cli
 
 #### 可观测性（technical/adr/observability/）
 
@@ -133,6 +135,7 @@ sources: 0
 | 服务间托管身份与凭证 | [[adr-managed-service-identity-authentication]] |
 | 管理后台运维操作 | [[admin]] |
 | MCP 如何运作 | [[ai-features]] |
+| Skill Marketplace 如何发布与分发 | [[skill-marketplace]]、[[adr-skill-marketplace-federation]] |
 | Pole 如何自动注册和管理自身能力 | [[adr-pole-self-management-control-loop]] |
 | System Configuration 如何发布 | [[adr-system-configuration-control-plane]] |
 | Control Plane、Console 与 Limiter 如何组合运行 | [[adr-unified-process-mode-and-limiter-integration]] |

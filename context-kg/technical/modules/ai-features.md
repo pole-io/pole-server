@@ -1,12 +1,12 @@
 ---
-title: AI 原生功能：MCP Registry 与 A2A Agent Registry
-tags: [ai, mcp, a2a]
-links: [storage, cache-layer, api-servers, adr-a2a-agent-registry, adr-console-agent-resource-workbench, adr-pole-self-management-control-loop, adr-ai-resource-environment-binding]
-updated: 2026-07-29
+title: AI 原生功能：MCP、A2A、Pole Agent 与 Skill Marketplace
+tags: [ai, mcp, a2a, skill, marketplace]
+links: [storage, cache-layer, api-servers, adr-a2a-agent-registry, adr-console-agent-resource-workbench, adr-pole-self-management-control-loop, adr-ai-resource-environment-binding, skill-marketplace, adr-skill-marketplace-federation]
+updated: 2026-08-11
 sources: 18
 ---
 
-# AI 原生功能：MCP Registry 与 A2A Agent Registry
+# AI 原生功能：MCP、A2A、Pole Agent 与 Skill Marketplace
 
 ## 概览
 
@@ -14,6 +14,8 @@ AI 原生功能使 Pole 的服务注册中心和治理能力对 AI 智能体（L
 
 - **MCP Registry** — 注册和发现 MCP（模型上下文协议）服务器
 - **A2A Agent Registry** — 注册和发现 A2A Agent Card，使 Agent 能按能力、skill 和协议端点发现其它 Agent
+- **Pole Agent** — 通过受控工具调用帮助用户查询和修改 Pole 资源
+- **Skill Marketplace** — 发布、审核、同步和分发不可变 Agent Skills Bundle
 
 MCP Server 与 A2A Agent Registry 记录是 Namespace 中的环境实例。跨环境身份由控制面稳定
 逻辑定义表达，不使用同名自动聚合；完整模型见 [[adr-ai-resource-environment-binding]]。
@@ -177,6 +179,19 @@ Agent 运行配置已从 Kubernetes 日常环境变量迁入 Pole 内部 System 
 
 Pole 自身能力现已形成自动闭环：`pole-self-manager` 在启动和周期 reconcile 中把 Control Plane MCP 及真实工具快照登记为 `pole-system/pole-control-plane`，`all` 模式再从真实 Agent Card 投影并登记 Pole Agent A2A 能力。Console Agent 以 Registry 自然键解析 MCP 地址，不再把固定 endpoint 当作唯一事实来源。管理员保存 Agent Prompt/模型/工具策略后自动执行候选探测并应用；失败版本保留为 rejected 草稿，运行时继续使用 last-known-good。完整边界见 [[adr-pole-self-management-control-loop]]。
 
+## Skill Marketplace
+
+Skill Marketplace 是 AI 工具下独立于 MCP、A2A Card Skill 与 Pole Agent 的发布目录。控制面以
+`publisher/name` 管理不可变 SemVer Release，对上传 ZIP 进行 Agent Skills manifest、路径、大小、权限、
+SHA-256、Ed25519 签名和基础静态扫描校验；默认使用 MySQL BLOB `BundleStore`，并通过 Pole、HTTP Index
+和 GitHub Release Adapter 将外部版本冻结到本地。
+
+HTTP 根为 `/api/skill-marketplace`。公共且已发布的目录、详情和精确 Bundle 允许匿名读取；私有 Skill
+通过 User、UserGroup、Role grant 控制。Console 路由为 `/ai/skills` 与
+`/ai/skills/:publisher/:name`，只管理、审核和安全预览，不执行或安装 Bundle。安装生命周期由独立
+`pole-ai` CLI 的内容 Store、lockfile 及 Codex、Claude Code、通用目录 Adapter 负责。完整产品与技术
+边界见 [[skill-marketplace]]、[[adr-skill-marketplace-federation]]。
+
 ## 相关页面
 
 - [[storage]]
@@ -186,3 +201,5 @@ Pole 自身能力现已形成自动闭环：`pole-self-manager` 在启动和周�
 - [[adr-console-agent-resource-workbench]]
 - [[adr-pole-self-management-control-loop]]
 - [[adr-ai-resource-environment-binding]]
+- [[skill-marketplace]]
+- [[adr-skill-marketplace-federation]]
