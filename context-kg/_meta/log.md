@@ -1602,6 +1602,15 @@ sources: 0
   - 新建 `pole-ai-cli`，提供七个命令、三类 Agent Adapter、精确 lock 与本地投影完整性验证。
   - 目标测试、前端构建、CLI Clippy、specification Go/Rust 契约和浏览器 fixture 通过；真实外部集成仍待验收。
 
+## [2026-08-12] deliver | Skill Marketplace develop 与 OrbStack 交付
+
+- 更新页面：todo、log。
+- 变更摘要：
+  - control-plane 与 specification 已按独立功能提交推送 `develop`；pole-ai-cli 已本地提交，等待配置 remote。
+  - 干净提交树发现并修复 EditorDrawer 依赖和 Console 8080 Marketplace 反向代理缺口。
+  - OrbStack 已部署提交树镜像，验证 MySQL schema、公共/认证 API、真实 Console 深链、暗色窄视口和刷新返回。
+  - 空 Registry 下未伪造已发布 Release，CLI 真实安装和外部 Registry 同步保留为明确未验收边界。
+
 ## 相关页面
 
 - [[index]]

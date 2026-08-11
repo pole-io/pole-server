@@ -12838,12 +12838,25 @@ Template + Value 组合版本，同时保留组件快照的不可变性、复用
 OrbStack，完成真实 MySQL/API、Console 与集群运行态验收。
 
 - [x] 审计 control-plane、specification、pole-ai-cli 的分支、远端、脏改动和提交边界。
-- [ ] 仅暂存并提交 Skill Marketplace 相关后端、Console、知识库和契约改动。
-- [ ] 处理 specification develop 合并/推送与 pole-ai-cli 新仓库远端边界。
-- [ ] 使用 `kubectl --context orbstack` 重建并部署 control-plane。
-- [ ] 验证 Pod、日志、MySQL schema、公共/私有 API、Console 深链和 CLI 安装链路。
-- [ ] 记录实际 commit、push、镜像、Pod 与未完成边界。
+- [x] 仅暂存并提交 Skill Marketplace 相关后端、Console、知识库和契约改动。
+- [x] 处理 specification develop 合并/推送与 pole-ai-cli 新仓库远端边界。
+- [x] 使用 `kubectl --context orbstack` 重建并部署 control-plane。
+- [x] 验证 Pod、日志、MySQL schema、公共/私有 API 与 Console 深链；CLI 真实安装受空 Registry 限制。
+- [x] 记录实际 commit、push、镜像、Pod 与未完成边界。
 
 ### Review
 
-- 待交付完成后补充。
+- control-plane `develop` 已推送至 `d9bb3946`；Marketplace 后端、Console、知识库、共享 EditorDrawer 与
+  Console API 代理分别保持可审查提交。specification `develop` 已推送 `4375b18`。
+- `pole-ai-cli` 在独立仓库本地 `develop` 形成首个提交 `74e3850`，但仓库尚无 remote，因此不能伪报已推送。
+- 干净提交树复验首次发现 Marketplace 依赖未提交 EditorDrawer，补齐后专项 Go 测试、Console 契约与 release
+  构建通过；Console 代理专项测试通过。路由包全量测试仍仅有既有 observability 浮点断言 `0`/`0.0003` 失败。
+- OrbStack 最终镜像为 `sha256:469bd05e53f85464d96617f9915a7861535c2a0471887daf594ebaf11eaf28c9`，
+  Pod `pole-control-plane-767bf9c4d9-fgsk4` Ready、零重启，新 Pod 日志未发现 panic/fatal/error。
+- MySQL `pole_server` 已自动创建 9 张 `skill_*` 表，`max_allowed_packet=67108864`；8090 公共目录匿名返回
+  `200`，Console 同源认证代理也返回 `200 {"items":[],"total":0}`。
+- Playwright 在真实 `pole.localhost` 验证了登录会话恢复、Marketplace 空目录、720x900 暗色窄视口、缺失详情
+  错误态、后退与刷新；目录 API 为 200 且 Console 无 error/warning。截图为
+  `output/playwright/skill-marketplace-orbstack-empty-dark-720.png`。
+- 当前 Registry 无 published Release，因此没有制造生产夹具来伪装 CLI 实装成功；真实 CLI install/verify/remove、
+  外部 GitHub/HTTP Registry 同步、正式 specification tag 与统一 RBAC/审计仍是后续边界。
