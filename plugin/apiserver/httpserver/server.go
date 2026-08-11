@@ -44,6 +44,7 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/admin"
+	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/conn/keepalive"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
@@ -61,6 +62,7 @@ import (
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/auth"
 	confighttp "github.com/pole-io/pole-server/plugin/apiserver/httpserver/config"
 	discovery "github.com/pole-io/pole-server/plugin/apiserver/httpserver/discover"
+	skillhttp "github.com/pole-io/pole-server/plugin/apiserver/httpserver/skillmarketplace"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
 
@@ -115,6 +117,7 @@ type HTTPServer struct {
 	configSvr   *confighttp.HTTPServer
 	aimcpSvr    *aimcp.HTTPServer
 	aia2aSvr    *aia2a.HTTPServer
+	skillSvr    *skillhttp.HTTPServer
 	authSvr     *auth.HTTPServer
 
 	// apiserverSlots
@@ -302,6 +305,19 @@ func (h *HTTPServer) Run(errCh chan error) {
 		return
 	}
 	h.aimcpSvr = aimcpSvr
+	if h.isAPIEnabled("console") {
+		cacheMgr, cacheErr := cache.GetCacheManager()
+		if cacheErr != nil {
+			errCh <- cacheErr
+			return
+		}
+		skillSvr, skillErr := skillhttp.NewServer(h.ctx, storage, h.systemConfigUser, h.systemConfigAuth, cacheMgr)
+		if skillErr != nil {
+			errCh <- skillErr
+			return
+		}
+		h.skillSvr = skillSvr
+	}
 	if h.isAPIEnabled("aia2a") {
 		aia2aSvr, err := aia2a.NewServer(h.ctx, storage)
 		if err != nil {
@@ -461,6 +477,9 @@ func (h *HTTPServer) createRestfulContainer() (*restful.Container, error) {
 				wsContainer.Add(h.configSvr.GetConsoleAccessServer(apiConfig.Include))
 				wsContainer.Add(h.GetCoreV1ConsoleAccessServer(apiConfig.Include))
 				wsContainer.Add(h.authSvr.GetAuthServer())
+				if h.skillSvr != nil {
+					wsContainer.Add(h.skillSvr.GetAccessServer())
+				}
 			}
 		case "client":
 			if apiConfig.Enable {

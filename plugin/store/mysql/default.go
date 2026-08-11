@@ -94,6 +94,7 @@ type stableStore struct {
 	*mcpServerStore
 	*a2aAgentStore
 	*aiDefinitionStore
+	*skillMarketplaceStore
 
 	// 主数据库，可以进行读写
 	master *BaseDB
@@ -164,6 +165,9 @@ func (s *stableStore) Initialize(conf *store.Config) error {
 		return err
 	}
 	if err := ensureEnvironmentPromotionSchema(s.master); err != nil {
+		return err
+	}
+	if err := ensureSkillMarketplaceSchema(s.master); err != nil {
 		return err
 	}
 
@@ -336,6 +340,7 @@ func (s *stableStore) newStore() {
 	s.mcpServerStore = newMCPServerStore(s.master, s.slave)
 	s.a2aAgentStore = newA2AAgentStore(s.master, s.slave)
 	s.aiDefinitionStore = newAIResourceDefinitionStore(s.master, s.slave)
+	s.skillMarketplaceStore = newSkillMarketplaceStore(s.master, s.slave)
 }
 
 func buildEtimeStr(enable bool) string {
