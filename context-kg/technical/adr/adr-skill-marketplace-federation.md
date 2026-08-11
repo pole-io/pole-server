@@ -2,8 +2,8 @@
 title: ADR：多源 Skill Marketplace、不可变 Bundle 与 CLI 安装边界
 tags: [adr, ai, skill, marketplace, registry, supply-chain, cli]
 links: [skill-marketplace, ai-features, domain-models, storage, auth-system, api-servers, adr-console-agent-resource-workbench]
-updated: 2026-08-11
-sources: 0
+updated: 2026-08-12
+sources: 6
 ---
 
 # ADR：多源 Skill Marketplace、不可变 Bundle 与 CLI 安装边界
@@ -74,6 +74,15 @@ Release 冻结到本地 BundleStore：
 - `trusted` Source 可在本地扫描通过后进入可见目录，`untrusted` Source 必须进入隔离/审核；
 - 同步失败不删除上一个健康快照，并持久化错误、尝试次数和下次重试时间。
 
+Git 手工导入先将 Release tag 或显式 Tag 解析为不可变 commit SHA，不接受分支。服务端从该 commit
+下载受限的 GitHub 源码 ZIP 快照，然后按以下规则发现 Skill：
+
+- 指定目录自身有 `SKILL.md` 时，整个子树是单个 Skill Bundle；
+- 指定目录没有 `SKILL.md` 时，只扫描其一级子目录，不递归收集 examples/vendor 中的 manifest；
+- 同一快照中的 Skill 共用 Tag 解析出的 SemVer；Tag 非 SemVer 时必须显式覆盖；
+- Console 先展示路径、Skill 名、摘要和校验错误，确认时回传 commit SHA；Tag 在两阶段之间移动则拒绝导入；
+- 每个 Skill 子树独立规范化、扫描、存储和创建 Release，返回成功、已存在跳过与失败的逐项结果。
+
 ### 6. 授权与公共读
 
 Specification 工作区已新增 `SkillResources=32` 和 `StrategyResources.skills`，但 control-plane 当前
@@ -111,8 +120,9 @@ CLI 可解析 SemVer 约束，但默认升级不跨主版本。安装失败回�
 
 - 后端已实现规范化 ZIP、MySQL `LONGBLOB` BundleStore、签名/扫描/审核、公开匿名读、私有 grant、
   Registry 持久同步状态、七天孤儿回收与分页 index；非管理员不能下载任何非 `published` Bundle。
-- Git 首期只支持 GitHub Release ZIP asset；手工 Git 导入只允许 private，public 必须改走 detached
-  signature upload。通用 HTTP Index 的 Bundle 必须与 index 同源，且禁止 userinfo 与跨源重定向。
+- Git 手工导入支持 GitHub 单 Skill 仓库和指定目录下最多 256 个一级 Skill；源码快照锁定 commit，
+  仓库级压缩/解包/项数和重定向均受限。手工 Git 导入仍只允许 private，public 必须改走 detached signature upload。
+  通用 HTTP Index 的 Bundle 必须与 index 同源，且禁止 userinfo 与跨源重定向。
 - `pole-static-v1` 只提供内嵌私钥和原生可执行文件等基础持久化扫描证据，不等同于恶意软件引擎、
   SBOM、漏洞数据库或沙箱执行。
 - CLI 已实现七个命令、三类投影 Adapter、精确 digest lock、默认不跨 major 升级，以及对内容、类型、

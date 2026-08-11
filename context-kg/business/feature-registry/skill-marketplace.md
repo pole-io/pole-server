@@ -2,8 +2,8 @@
 title: Skill Marketplace 功能档案
 tags: [business, feature, ai, skill, marketplace]
 links: [ai-features, domain-models, terminology, auth-system, adr-skill-marketplace-federation]
-updated: 2026-08-11
-sources: 0
+updated: 2026-08-12
+sources: 3
 ---
 
 # Skill Marketplace 功能档案
@@ -43,6 +43,8 @@ Skills。它与 MCP Tool、A2A Agent Card 中的 skill 声明以及 Pole 内置 
 - `/ai/skills/:publisher/:name`：独立深链详情页，包含精确版本选择、签名/扫描/来源证据和
   安全 Bundle 文件浏览。
 - 上传、Git 导入和审核使用短流程编辑层；长文件树和版本历史保留在详情页。
+- Git 导入允许单 Skill 仓库，也允许从 `skills/` 等指定目录发现全部一级 Skill。用户必须先预览
+  Tag/Release、commit、统一 SemVer、路径和摘要，再确认批量导入；结果按 Skill 区分成功、跳过和失败。
 - 页面不提供“执行”或服务端“安装”，只展示可复制的精确 `pole-ai` CLI 命令。
 
 ## 相关页面

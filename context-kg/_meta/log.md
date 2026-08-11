@@ -1619,6 +1619,14 @@ sources: 0
   - 列表与详情页的页头、通知、空状态和可访问名称统一跟随 locale key。
   - 干净构建、OrbStack 部署和真实浏览器中英文切换验收通过。
 
+## [2026-08-12] implement | Git 单仓库批量 Skill 导入
+
+- 更新页面：skill-marketplace、adr-skill-marketplace-federation、ai-features、index、todo、lessons。
+- 变更摘要：
+  - Tag/Release 先解析到不可变 commit，禁止分支导入与预览后静默换快照。
+  - 支持仓库根单 Skill 或指定目录下一级多 Skill 发现，统一 Tag SemVer 并允许显式覆盖。
+  - Console 增加发现预览和逐项结果；后端对每个子树独立规范化、扫描、冻结与发布。
+
 ## 相关页面
 
 - [[index]]

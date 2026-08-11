@@ -12877,3 +12877,32 @@ OrbStack，完成真实 MySQL/API、Console 与集群运行态验收。
   Pod `pole-control-plane-6959c8f67c-pl4cj` Ready、零重启，日志未发现 panic/fatal/error。
 - Playwright 在真实 `pole.localhost` 会话验证中文菜单、页头、说明区均为“Skill 市场”；
   切换英文后菜单与页头为 `Skill Marketplace`，浏览器控制台零错误。
+
+## Skill Git 单仓库批量导入（2026-08-12）
+
+- [x] 核对现有单 ZIP GitHub Release 导入链路与不可变约束。
+- [x] 将 Tag/Release 解析为不可变 commit，支持根 Skill 或指定目录下一级 Skill 发现。
+- [x] 增加发现预览、SemVer 覆盖、逐项导入与成功/跳过/失败摘要。
+- [x] 补充后端、Console 契约与安全回归，完成构建和 context-kg lint。
+- [x] 推送 `develop`、更新 OrbStack，并完成真实浏览器验收。
+
+### 已确认决策
+
+- 指定目录自身含 `SKILL.md` 时按单 Skill 处理；否则只扫描其一级子目录。
+- 同一快照中的 Skill 默认共用 Tag SemVer；Tag 非 SemVer 时必须显式提供 SemVer 覆盖值。
+- 先预览后确认导入；各 Skill 独立冻结与发布，单项失败不回滚已成功项。
+
+### Review
+
+- 代码提交 `849950cf`；新增 `/import-git/discover` 预览端点，导入时必须回传预览 commit SHA，
+  Tag 移动或分支引用会被拒绝。
+- GitHub 源码快照限制为 64 MiB 压缩、256 MiB 解包、10,000 项和 256 个 Skill；只扫描指定目录的
+  一级子目录，各子树独立生成规范 ZIP 和 SHA-256。
+- Go 两个目标包、MySQL 包、Go vet、Console 契约/lint/release build、context-kg lint 与 `git diff --check`
+  通过；干净提交树复验通过。
+- 真实 GitHub 只读集成使用 `psenger/ai-agent-skills@v2.2.1` 的 `skills/`，解析到 commit
+  `96716a643138665b4e335f836fb661f126944644` 并发现多个有效一级 Skill；未向市场写入外部数据。
+- OrbStack 镜像 `sha256:aced5837e499376bfd09190b89a82d1a602978af5ec42816d6d42b4e321238d7`，
+  Pod `pole-control-plane-78bd85d965-ls9kv` Ready、零重启，日志未见 panic/fatal/error，产品入口返回 200。
+- Playwright 在真实部署中验证六个导入字段、连续输入、私有可见性、扫描动作和 720/620px
+  响应式布局；干净会话控制台零错误。当前数据库无 Publisher，因此未伪造身份执行真实市场写入。

@@ -2,8 +2,8 @@
 title: AI 原生功能：MCP、A2A、Pole Agent 与 Skill Marketplace
 tags: [ai, mcp, a2a, skill, marketplace]
 links: [storage, cache-layer, api-servers, adr-a2a-agent-registry, adr-console-agent-resource-workbench, adr-pole-self-management-control-loop, adr-ai-resource-environment-binding, skill-marketplace, adr-skill-marketplace-federation]
-updated: 2026-08-11
-sources: 18
+updated: 2026-08-12
+sources: 24
 ---
 
 # AI 原生功能：MCP、A2A、Pole Agent 与 Skill Marketplace
@@ -184,7 +184,8 @@ Pole 自身能力现已形成自动闭环：`pole-self-manager` 在启动和周�
 Skill Marketplace 是 AI 工具下独立于 MCP、A2A Card Skill 与 Pole Agent 的发布目录。控制面以
 `publisher/name` 管理不可变 SemVer Release，对上传 ZIP 进行 Agent Skills manifest、路径、大小、权限、
 SHA-256、Ed25519 签名和基础静态扫描校验；默认使用 MySQL BLOB `BundleStore`，并通过 Pole、HTTP Index
-和 GitHub Release Adapter 将外部版本冻结到本地。
+和 GitHub Tag/Release Adapter 将外部版本冻结到本地。Git 手工导入可从不可变 commit 快照识别仓库根 Skill，
+或指定目录下的全部一级 Skill；Console 先预览发现结果，再逐项冻结 Bundle 并返回批量摘要。
 
 HTTP 根为 `/api/skill-marketplace`。公共且已发布的目录、详情和精确 Bundle 允许匿名读取；私有 Skill
 通过 User、UserGroup、Role grant 控制。Console 路由为 `/ai/skills` 与

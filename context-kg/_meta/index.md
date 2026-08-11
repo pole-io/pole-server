@@ -2,7 +2,7 @@
 title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-08-11
+updated: 2026-08-12
 sources: 0
 ---
 
@@ -38,7 +38,7 @@ sources: 0
 - [[config-center]] — 配置中心：版本化配置文件、灰度发布、Watch 长轮询机制 | business, feature, config
 - [[governance-rules]] — 治理规则：路由、限流、熔断、故障探测、泳道、无损规则 | business, feature, governance
 - [[admin]] — 管理后台：AdminOperateServer 接口与跨域运维操作 | business, feature, admin
-- [[skill-marketplace]] — 多源 Skill 发布、审核与分发 | business, feature, ai, skill, marketplace
+- [[skill-marketplace]] — 多源 Skill 发布、Git 批量导入与分发 | business, feature, ai, skill, marketplace
 
 ## 技术知识域（technical/）
 
