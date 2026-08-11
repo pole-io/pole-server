@@ -12,6 +12,7 @@ import {
 import EditorDrawer, { EditorDrawerActions } from 'components/EditorDrawer';
 import { useNavigate } from 'components/Router';
 import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout';
+import { useTranslation } from 'react-i18next';
 import {
   MarketplaceReview,
   MarketplaceSkill,
@@ -68,11 +69,12 @@ const sourceLabel = (source?: string) => ({ pole: 'Pole 本地', git: 'Git', htt
 const initialUpload = { publisher: '', name: '', version: '', visibility: 'private' as SkillVisibility };
 const initialGit = { repository_url: '', reference: '', publisher: '', name: '', visibility: 'private' as SkillVisibility };
 const initialSource = { name: '', url: '', type: 'http_index', trust_level: 'untrusted', enabled: true };
-const notifyError = (message: string) => openErrNotification('Skill Marketplace', message);
-const notifyInfo = (message: string) => openInfoNotification('Skill Marketplace', message);
-
 const SkillMarketplacePage: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const marketplaceLabel = t('menu.ai.skills');
+  const notifyError = (message: string) => openErrNotification(marketplaceLabel, message);
+  const notifyInfo = (message: string) => openInfoNotification(marketplaceLabel, message);
   const [items, setItems] = React.useState<MarketplaceSkill[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
@@ -101,11 +103,11 @@ const SkillMarketplacePage: React.FC = () => {
     } catch (reason) {
       setItems([]);
       setTotal(0);
-      setError(reason instanceof Error ? reason.message : 'Skill Marketplace 尚未配置或目录查询失败。');
+      setError(reason instanceof Error ? reason.message : `${marketplaceLabel}尚未配置或目录查询失败。`);
     } finally {
       setLoading(false);
     }
-  }, [query, source, status, visibility]);
+  }, [marketplaceLabel, query, source, status, visibility]);
 
   React.useEffect(() => { void refresh(); }, [refresh]);
 
@@ -178,13 +180,13 @@ const SkillMarketplacePage: React.FC = () => {
     <div className={style.page}>
       <ResourceHeader
         placement="app-header"
-        eyebrow="AI 工具 / Skill Marketplace"
-        title="Skill Marketplace"
+        eyebrow={`AI 工具 / ${marketplaceLabel}`}
+        title={marketplaceLabel}
         description="发现、发布、审核并镜像遵循 Agent Skills 规范的不可变 Bundle。"
         actions={<Space><Button variant="outline" onClick={openSources}>Registry Source</Button><Button variant="outline" onClick={openReviews}>审核工作台</Button><Button variant="outline" onClick={() => setDrawer('git')}>Git 导入</Button><Button theme="primary" onClick={() => setDrawer('upload')}>上传 Bundle</Button></Space>}
       />
 
-      <section className={style.intro} aria-label="Skill Marketplace 说明">
+      <section className={style.intro} aria-label={`${marketplaceLabel}说明`}>
         <div><strong>可移植 Skill Bundle</strong><span>发布版本由 SemVer 与 SHA-256 固定；仅显示命令，不在 Console 执行或安装 Skill。</span></div>
         <code>pole-ai skill install publisher/name@version</code>
       </section>
@@ -205,7 +207,7 @@ const SkillMarketplacePage: React.FC = () => {
       {error && <div className={style.error} role="status"><strong>目录暂不可用</strong><span>{error}</span><Button size="small" variant="outline" onClick={() => void refresh()}>重试</Button></div>}
       <Loading loading={loading} text="加载 Skill 目录…">
         {items.length ? <Table
-          ariaLabel="Skill Marketplace 目录"
+          ariaLabel={`${marketplaceLabel}目录`}
           className={style.table}
           data={items}
           rowKey={(row: MarketplaceSkill) => `${row.publisher}/${row.name}`}
@@ -218,7 +220,7 @@ const SkillMarketplacePage: React.FC = () => {
             { colKey: 'status', title: '状态', width: 140, cell: ({ row }: any) => <Tag theme={statusTheme(row.status || row.latest_release?.status)} variant="outline">{statusLabel(row.status || row.latest_release?.status)}</Tag> },
             { colKey: 'updated', title: '更新时间', width: 180, cell: ({ row }: any) => <span>{row.updated_at || row.latest_release?.published_at || '-'}</span> },
           ]}
-        /> : !loading && <Empty title={error ? '等待 Marketplace 服务可用' : '未找到匹配的 Skill'} description={error ? '完成控制面 Marketplace 配置后，目录会自动显示。' : '可调整筛选条件，或上传符合 Agent Skills 规范的 Bundle。'} action={!error && <Button theme="primary" onClick={() => setDrawer('upload')}>上传 Bundle</Button>} />}
+        /> : !loading && <Empty title={error ? `等待 ${marketplaceLabel}服务可用` : '未找到匹配的 Skill'} description={error ? `完成控制面 ${marketplaceLabel}配置后，目录会自动显示。` : '可调整筛选条件，或上传符合 Agent Skills 规范的 Bundle。'} action={!error && <Button theme="primary" onClick={() => setDrawer('upload')}>上传 Bundle</Button>} />}
       </Loading>
 
       <EditorDrawer visible={drawer === 'upload'} width="wide" title="上传 Skill Bundle" description="发布版本不可修改；公共 Release 必须含有效 Ed25519 detached signature 并通过审核。" onClose={closeDrawer} footer={<EditorDrawerActions onCancel={closeDrawer} onSubmit={submitUpload} submitText="提交 Release" submitting={submitting} />}>

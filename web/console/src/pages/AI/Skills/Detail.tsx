@@ -3,6 +3,7 @@ import { Button, Empty, Input, Loading, Select, Tag } from 'components/Fluent';
 import EditorDrawer, { EditorDrawerActions } from 'components/EditorDrawer';
 import { useLocation, useNavigate } from 'components/Router';
 import { ResourceHeader } from 'components/ResourceLayout';
+import { useTranslation } from 'react-i18next';
 import {
   SkillBundle,
   SkillBundleEntry,
@@ -32,6 +33,8 @@ const principalTypeOptions = [{ label: 'User', value: 'user' }, { label: 'UserGr
 const SkillMarketplaceDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
+  const marketplaceLabel = t('menu.ai.skills');
   const { publisher, name } = parseIdentity(location.pathname);
   const [skill, setSkill] = React.useState<SkillDetail | null>(null);
   const [version, setVersion] = React.useState('');
@@ -121,7 +124,7 @@ const SkillMarketplaceDetailPage: React.FC = () => {
 
   return (
     <div className={style.page}>
-      <ResourceHeader placement="app-header" eyebrow="AI 工具 / Skill Marketplace / 不可变 Release" title={skill ? `${skill.publisher}/${skill.name}` : `${publisher}/${name}`} description="查看已冻结 Release 的元数据和安全 Bundle 文件树；不会执行、安装或预览二进制内容。" actions={<Button variant="outline" onClick={() => navigate('/ai/skills')}>返回目录</Button>} />
+      <ResourceHeader placement="app-header" eyebrow={`AI 工具 / ${marketplaceLabel} / 不可变 Release`} title={skill ? `${skill.publisher}/${skill.name}` : `${publisher}/${name}`} description="查看已冻结 Release 的元数据和安全 Bundle 文件树；不会执行、安装或预览二进制内容。" actions={<Button variant="outline" onClick={() => navigate('/ai/skills')}>返回目录</Button>} />
       <Loading loading={loading} text="加载 Skill 详情…">
         {error ? <Empty title="Skill 详情不可用" description={error} action={<Button variant="outline" onClick={() => void loadSkill()}>重试</Button>} /> : skill && <>
           <section className={style.identity}>

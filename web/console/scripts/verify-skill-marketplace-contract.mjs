@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const [router, routeRuntime, service, list, detail, styles, packageJson] = await Promise.all([
+const [router, routeRuntime, service, list, detail, styles, packageJson, zhLocale, enLocale] = await Promise.all([
   read('src/router/modules/ai.ts'),
   read('src/components/Router/index.tsx'),
   read('src/services/skill_marketplace.ts'),
@@ -10,6 +10,8 @@ const [router, routeRuntime, service, list, detail, styles, packageJson] = await
   read('src/pages/AI/Skills/Detail.tsx'),
   read('src/pages/AI/Skills/index.module.less'),
   read('package.json'),
+  read('src/locales/zh-CN.json'),
+  read('src/locales/en-US.json'),
 ]);
 const menu = await read('src/layouts/components/Menu.tsx');
 
@@ -18,6 +20,10 @@ assert.match(router, /path:\s*'skills\/:publisher\/:name'/, '必须注册 publis
 assert.match(routeRuntime, /const routeMatches[\s\S]*segment\.startsWith\(':'\)/, '路由器必须支持受控 :param 深链匹配');
 assert.match(menu, /pathname\.startsWith\('\/ai\/skills\/'\).*'\/ai\/skills'/, 'Skill 深链必须保持目录菜单高亮');
 assert.match(service, /SkillMarketplaceAPI = '\/api\/skill-marketplace'/, 'Marketplace API 根必须集中定义');
+assert.match(zhLocale, /"menu\.ai\.skills": "Skill 市场"/, '中文界面必须使用 Skill 市场');
+assert.match(enLocale, /"menu\.ai\.skills": "Skill Marketplace"/, '英文界面必须保留 Skill Marketplace');
+assert.match(list, /marketplaceLabel = t\('menu\.ai\.skills'\)/, '目录页标题必须跟随 locale');
+assert.match(detail, /marketplaceLabel = t\('menu\.ai\.skills'\)/, '详情页标题必须跟随 locale');
 for (const endpoint of ['/v1/skills', '/releases/${encodeURIComponent(version)}/bundle-manifest', '/v1/reviews', '/v1/registry-sources']) {
   assert.ok(service.includes(endpoint), `服务必须覆盖 ${endpoint}`);
 }
