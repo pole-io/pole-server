@@ -67,6 +67,8 @@ func NewRouter(config *bootstrap.Config, assets fs.FS) *gin.Engine {
 	AIMCPRouter(r, config)
 	// AI A2A 请求
 	AIA2ARouter(r, config)
+	// Skill Marketplace 管理请求
+	SkillMarketplaceRouter(r, config)
 	// Console Agent 资源变更工作台与系统配置共享同一个热更新 RuntimeManager。
 	workbench, agentRuntime, err := NewAgentRuntime(config)
 	if err != nil {
@@ -99,6 +101,7 @@ func isAPIPath(p string) bool {
 		"/ai/agent/a2a/",
 		"/observability/v1/",
 		"/system-config/v1/",
+		"/api/skill-marketplace",
 	}
 	for _, prefix := range apiPrefixes {
 		if strings.HasPrefix(p, prefix) {
