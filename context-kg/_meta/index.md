@@ -17,7 +17,7 @@ sources: 0
 ## 任务过程记录（tasks/）
 
 - [[todo]] — 当前任务计划、进度、review、部署、布局验收和验证记录 | tasks, todo
-- [[lessons]] — 用户纠正后的命名、交付与表单安全留白规则 | tasks, lessons
+- [[lessons]] — 用户纠正后的命名、交付与同域抽屉覆盖规则 | tasks, lessons
 
 ## 业务知识域（business/）
 

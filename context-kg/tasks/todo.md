@@ -12925,3 +12925,17 @@ OrbStack，完成真实 MySQL/API、Console 与集群运行态验收。
   Pod `pole-control-plane-5f5db95d6b-zxkkt` Ready、零重启，近期日志无 panic/fatal/error，入口返回 200。
 - Playwright 在真实部署量测上传和 Git 抽屉：1280px 视口左右正文留白均为 28px，620px 时均为 18px并切为
   单列；正文和页面横向溢出均为 0，连续输入保持，文件控件获得 2px 可见焦点，控制台 0 error/0 warning。
+
+## Skill 市场抽屉交互统一复核（2026-08-12）
+
+- [x] 盘点上传、Git 导入、审核工作台、Registry Source 与私有访问策略五个抽屉入口。
+- [x] 将五个入口统一到 Skill 范围的正文安全留白和响应式容器，不改变共享 EditorDrawer 全局行为。
+- [x] 为列表末行、空态和窄屏布局补充一致的视觉边界与专项契约。
+- [x] 运行 Console 契约、lint、release build、context-kg lint 与 diff 检查。
+- [ ] 推送 `develop`、更新 OrbStack，并逐入口完成真实浏览器验收。
+
+### 实现约束
+
+- 共享 EditorDrawer 继续保持无偏好的内容画布，避免给治理工作台等复杂入口重复添加内边距。
+- Skill 市场所有抽屉正文统一使用同一个局部容器；桌面留白 28px，窄屏留白 18px。
+- 验收覆盖表单、列表、空态、访问策略和 620px 窄屏，不只回看最初截图中的上传入口。
