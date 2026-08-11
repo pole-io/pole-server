@@ -12932,10 +12932,22 @@ OrbStack，完成真实 MySQL/API、Console 与集群运行态验收。
 - [x] 将五个入口统一到 Skill 范围的正文安全留白和响应式容器，不改变共享 EditorDrawer 全局行为。
 - [x] 为列表末行、空态和窄屏布局补充一致的视觉边界与专项契约。
 - [x] 运行 Console 契约、lint、release build、context-kg lint 与 diff 检查。
-- [ ] 推送 `develop`、更新 OrbStack，并逐入口完成真实浏览器验收。
+- [x] 推送 `develop`、更新 OrbStack，并逐入口完成真实浏览器验收。
 
 ### 实现约束
 
 - 共享 EditorDrawer 继续保持无偏好的内容画布，避免给治理工作台等复杂入口重复添加内边距。
 - Skill 市场所有抽屉正文统一使用同一个局部容器；桌面留白 28px，窄屏留白 18px。
 - 验收覆盖表单、列表、空态、访问策略和 620px 窄屏，不只回看最初截图中的上传入口。
+
+### Review
+
+- 代码提交 `62359d9a`、知识记录提交 `bfad9cb8` 已推送 `develop`；四个目录页抽屉与一个详情页访问策略
+  抽屉由专项契约按入口数量保护。
+- 从干净提交树构建镜像 `sha256:c8ad60d621ffc0531eff801fd911552e03f944a4b68b7538edaf016fd09ab0d2`；
+  OrbStack Pod `pole-control-plane-94785db5-x8qn9` Running、Ready、零重启，产品入口返回 200，近期日志
+  未匹配到 panic、fatal 或 error。
+- 真实接口页面验证审核空态、Registry Source、上传和 Git 导入；桌面正文左右留白均为 28px，620px
+  视口均为 18px，Source 双栏切为单列，Git 字段和访问策略控件切为逐行布局，页面及正文横向溢出均为 0。
+- 上传 Publisher 与访问策略主体 ID 连续输入后值完整且焦点保持；浏览器控制台 0 error、0 warning。
+  当前 Registry 为空，私有访问策略使用仅拦截三个 GET 的隔离 fixture 验证部署产物，没有向市场写入测试 Skill。
