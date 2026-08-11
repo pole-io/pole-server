@@ -62,6 +62,9 @@ assert.match(detail, /SKILL\.md/, 'Bundle 浏览应优先选中 SKILL.md');
 assert.match(detail, /不可编辑/, '详情必须声明已发布 Bundle 不可编辑');
 assert.match(styles, /@media \(max-width: 920px\)/, '样式必须覆盖窄视口');
 assert.match(styles, /var\(--app-surface\)/, '样式必须使用主题 token');
+assert.match(list, /className=\{style\.releaseEditor\}[\s\S]*className=\{style\.drawerForm\}/, '发布与 Git 表单必须使用带安全留白的正文容器');
+assert.match(styles, /\.releaseEditor\s*\{[^}]*padding:\s*24px 28px 32px/, '宽抽屉表单必须保留稳定横向安全留白');
+assert.match(styles, /\.fileField input::file-selector-button/, '文件上传不得回退为未设计的浏览器默认按钮');
 assert.match(packageJson, /test:skill-marketplace/, 'package script 必须暴露专项契约检查');
 
 console.log('Skill Marketplace Console 契约检查通过。');

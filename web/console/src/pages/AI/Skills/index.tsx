@@ -252,32 +252,36 @@ const SkillMarketplacePage: React.FC = () => {
       </Loading>
 
       <EditorDrawer visible={drawer === 'upload'} width="wide" title="上传 Skill Bundle" description="发布版本不可修改；公共 Release 必须含有效 Ed25519 detached signature 并通过审核。" onClose={closeDrawer} footer={<EditorDrawerActions onCancel={closeDrawer} onSubmit={submitUpload} submitText="提交 Release" submitting={submitting} />}>
-        <div className={style.drawerForm}>
-          <label><span>Publisher</span><Input value={upload.publisher} placeholder="例如 pole" onChange={(value) => setUpload({ ...upload, publisher: value })} /></label>
-          <label><span>Skill 名称</span><Input value={upload.name} placeholder="例如 incident-response" onChange={(value) => setUpload({ ...upload, name: value })} /></label>
-          <label><span>SemVer</span><Input value={upload.version} placeholder="例如 1.2.0" onChange={(value) => setUpload({ ...upload, version: value })} /></label>
-          <label><span>可见性</span><Select options={visibilityOptions.slice(1)} value={upload.visibility} onChange={(value: SkillVisibility) => setUpload({ ...upload, visibility: value })} /></label>
-          <label className={style.fileField}><span>压缩 Bundle</span><input type="file" accept=".zip,.tgz,.tar.gz" onChange={(event) => setBundle(event.currentTarget.files?.[0] || null)} /><small>{bundle ? bundle.name : '最大 16 MiB；服务端会校验路径、解包大小和摘要。'}</small></label>
-          <label className={style.fileField}><span>Ed25519 Detached Signature JSON envelope（公共必填）</span><input type="file" accept="application/json,.json" onChange={(event) => setSignature(event.currentTarget.files?.[0] || null)} /><small>{signature ? signature.name : 'JSON 内容必须包含 algorithm=Ed25519、signedAt（RFC3339）和 signature（base64）；私有 Release 可省略。'}</small></label>
+        <div className={style.releaseEditor}>
+          <div className={style.drawerForm}>
+            <label><span>Publisher</span><Input value={upload.publisher} placeholder="例如 pole" onChange={(value) => setUpload({ ...upload, publisher: value })} /></label>
+            <label><span>Skill 名称</span><Input value={upload.name} placeholder="例如 incident-response" onChange={(value) => setUpload({ ...upload, name: value })} /></label>
+            <label><span>SemVer</span><Input value={upload.version} placeholder="例如 1.2.0" onChange={(value) => setUpload({ ...upload, version: value })} /></label>
+            <label><span>可见性</span><Select options={visibilityOptions.slice(1)} value={upload.visibility} onChange={(value: SkillVisibility) => setUpload({ ...upload, visibility: value })} /></label>
+            <label className={style.fileField}><span>压缩 Bundle</span><input type="file" accept=".zip,.tgz,.tar.gz" onChange={(event) => setBundle(event.currentTarget.files?.[0] || null)} /><small>{bundle ? bundle.name : '最大 16 MiB；服务端会校验路径、解包大小和摘要。'}</small></label>
+            <label className={style.fileField}><span>Ed25519 Detached Signature JSON envelope（公共必填）</span><input type="file" accept="application/json,.json" onChange={(event) => setSignature(event.currentTarget.files?.[0] || null)} /><small>{signature ? signature.name : 'JSON 内容必须包含 algorithm=Ed25519、signedAt（RFC3339）和 signature（base64）；私有 Release 可省略。'}</small></label>
+          </div>
         </div>
       </EditorDrawer>
 
       <EditorDrawer visible={drawer === 'git'} width="wide" title="从 Git 导入 Release" description="只接受明确的 Tag 或 Release；先解析到不可变 commit 并预览 Skill，再逐项冻结 Bundle 摘要。" onClose={closeDrawer} footer={<EditorDrawerActions onCancel={closeDrawer} onSubmit={submitGitImport} submitText={gitResult ? '重新扫描' : gitDiscovery ? `导入全部 ${gitDiscovery.items.length} 个 Skill` : '扫描 Skill'} submitting={submitting} />}>
-        <div className={style.drawerForm}>
-          <label><span>仓库地址</span><Input value={gitImport.repository_url} placeholder="https://github.com/org/repo" onChange={(value) => updateGitImport({ repository_url: value })} /></label>
-          <label><span>Tag / Release</span><Input value={gitImport.reference} placeholder="v1.2.0" onChange={(value) => updateGitImport({ reference: value })} /></label>
-          <label><span>Skill 根目录</span><Input value={gitImport.root_path} placeholder="留空表示仓库根目录；多 Skill 如 skills" onChange={(value) => updateGitImport({ root_path: value })} /></label>
-          <label><span>SemVer 覆盖（可选）</span><Input value={gitImport.version} placeholder="Tag 非 SemVer 时必填，如 1.2.0" onChange={(value) => updateGitImport({ version: value })} /></label>
-          <label><span>Publisher</span><Input value={gitImport.publisher} placeholder="所有发现的 Skill 归属此 Publisher" onChange={(value) => updateGitImport({ publisher: value })} /></label>
-          <label><span>可见性</span><Select options={[{ label: '私有', value: 'private' }]} value={gitImport.visibility} onChange={(value: SkillVisibility) => updateGitImport({ visibility: value })} /></label>
+        <div className={style.releaseEditor}>
+          <div className={style.drawerForm}>
+            <label><span>仓库地址</span><Input value={gitImport.repository_url} placeholder="https://github.com/org/repo" onChange={(value) => updateGitImport({ repository_url: value })} /></label>
+            <label><span>Tag / Release</span><Input value={gitImport.reference} placeholder="v1.2.0" onChange={(value) => updateGitImport({ reference: value })} /></label>
+            <label><span>Skill 根目录</span><Input value={gitImport.root_path} placeholder="留空表示仓库根目录；多 Skill 如 skills" onChange={(value) => updateGitImport({ root_path: value })} /></label>
+            <label><span>SemVer 覆盖（可选）</span><Input value={gitImport.version} placeholder="Tag 非 SemVer 时必填，如 1.2.0" onChange={(value) => updateGitImport({ version: value })} /></label>
+            <label><span>Publisher</span><Input value={gitImport.publisher} placeholder="所有发现的 Skill 归属此 Publisher" onChange={(value) => updateGitImport({ publisher: value })} /></label>
+            <label><span>可见性</span><Select options={[{ label: '私有', value: 'private' }]} value={gitImport.visibility} onChange={(value: SkillVisibility) => updateGitImport({ visibility: value })} /></label>
+          </div>
+          {gitDiscovery && <section className={style.gitPreview} aria-label="Git Skill 发现预览">
+            <header><div><strong>{gitResult ? '导入结果' : `已发现 ${gitDiscovery.items.length} 个 Skill`}</strong><span>{gitDiscovery.tag} · {gitDiscovery.version} · commit <code>{gitDiscovery.commit_sha.slice(0, 12)}</code></span></div>{gitResult && <Tag theme={gitResult.failed ? 'warning' : 'success'} variant="outline">{gitResult.succeeded} 成功 / {gitResult.skipped} 跳过 / {gitResult.failed} 失败</Tag>}</header>
+            <div className={style.gitSkillList}>{(gitResult?.items || gitDiscovery.items).map((item) => <article className={style.gitSkillRow} key={`${item.path}/${item.name}`}>
+              <div><strong>{item.name || '无效 Skill'}</strong><span>{item.path || '仓库根目录'} · {formatBytes(item.size || 0)} · {item.entries || 0} 个文件</span><small title={item.digest}>{item.digest ? `SHA-256 ${item.digest.slice(0, 16)}…` : '未生成摘要'}{item.error ? ` · ${item.error}` : ''}</small></div>
+              {'status' in item ? <Tag theme={item.status === 'succeeded' ? 'success' : item.status === 'failed' ? 'danger' : 'warning'} variant="outline">{item.status === 'succeeded' ? '成功' : item.status === 'failed' ? '失败' : '跳过'}</Tag> : item.error && <Tag theme="danger" variant="outline">无法导入</Tag>}
+            </article>)}</div>
+          </section>}
         </div>
-        {gitDiscovery && <section className={style.gitPreview} aria-label="Git Skill 发现预览">
-          <header><div><strong>{gitResult ? '导入结果' : `已发现 ${gitDiscovery.items.length} 个 Skill`}</strong><span>{gitDiscovery.tag} · {gitDiscovery.version} · commit <code>{gitDiscovery.commit_sha.slice(0, 12)}</code></span></div>{gitResult && <Tag theme={gitResult.failed ? 'warning' : 'success'} variant="outline">{gitResult.succeeded} 成功 / {gitResult.skipped} 跳过 / {gitResult.failed} 失败</Tag>}</header>
-          <div className={style.gitSkillList}>{(gitResult?.items || gitDiscovery.items).map((item) => <article className={style.gitSkillRow} key={`${item.path}/${item.name}`}>
-            <div><strong>{item.name || '无效 Skill'}</strong><span>{item.path || '仓库根目录'} · {formatBytes(item.size || 0)} · {item.entries || 0} 个文件</span><small title={item.digest}>{item.digest ? `SHA-256 ${item.digest.slice(0, 16)}…` : '未生成摘要'}{item.error ? ` · ${item.error}` : ''}</small></div>
-            {'status' in item ? <Tag theme={item.status === 'succeeded' ? 'success' : item.status === 'failed' ? 'danger' : 'warning'} variant="outline">{item.status === 'succeeded' ? '成功' : item.status === 'failed' ? '失败' : '跳过'}</Tag> : item.error && <Tag theme="danger" variant="outline">无法导入</Tag>}
-          </article>)}</div>
-        </section>}
       </EditorDrawer>
 
       <EditorDrawer visible={drawer === 'reviews'} width="workspace" title="公共 Release 审核工作台" description="审核决定只切换 Release 状态；已发布 Bundle、版本与摘要始终不可编辑。" onClose={closeDrawer} footer={false}>

@@ -27,13 +27,17 @@
 .cellStack small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .error { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; padding: 12px 14px; border-left: 3px solid var(--app-danger); background: var(--app-status-error-subtle); color: var(--app-text); }
 .error span { flex: 1; color: var(--app-text-secondary); font-size: 13px; }
+.releaseEditor { display: grid; gap: 20px; min-width: 0; padding: 24px 28px 32px; }
 .drawerForm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .drawerForm label, .sourceCreate label { display: grid; gap: 7px; color: var(--app-text); font-size: 13px; }
 .drawerForm label > span, .sourceCreate label > span { font-weight: 600; }
-.fileField { grid-column: 1 / -1; padding: 12px; border: 1px dashed var(--app-border-subtle); border-radius: 6px; }
-.fileField input { max-width: 100%; color: var(--app-text-secondary); }
-.fileField small { color: var(--app-text-secondary); font-size: 12px; }
-.gitPreview { display: grid; gap: 12px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--app-border-subtle); }
+.fileField { grid-column: 1 / -1; gap: 10px !important; padding: 16px 18px; border: 1px dashed var(--app-border-subtle); border-radius: 8px; background: var(--app-surface-subtle); }
+.fileField input { width: 100%; max-width: 100%; color: var(--app-text-secondary); font: inherit; font-size: 12px; }
+.fileField input::file-selector-button { margin-right: 12px; padding: 7px 12px; border: 1px solid var(--app-border); border-radius: 5px; background: var(--app-surface); color: var(--app-text); font: inherit; font-weight: 600; cursor: pointer; transition: border-color .16s ease, background-color .16s ease; }
+.fileField input::file-selector-button:hover { border-color: var(--app-brand); background: var(--app-brand-subtle); }
+.fileField input:focus-visible { outline: 2px solid var(--app-brand); outline-offset: 3px; border-radius: 3px; }
+.fileField small { color: var(--app-text-secondary); font-size: 12px; line-height: 18px; }
+.gitPreview { display: grid; gap: 12px; padding-top: 20px; border-top: 1px solid var(--app-border-subtle); }
 .gitPreview > header, .gitSkillRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .gitPreview > header > div, .gitSkillRow > div { display: grid; min-width: 0; gap: 4px; }
 .gitPreview > header span, .gitSkillRow span, .gitSkillRow small { overflow: hidden; color: var(--app-text-secondary); font-size: 12px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
@@ -76,4 +80,4 @@
 .filePreview :global(.fluent-empty) { align-self: center; }
 
 @media (max-width: 920px) { .intro, .releaseControl, .command, .identity, .accessPolicy { grid-template-columns: 1fr; flex-direction: column; align-items: stretch; } .intro code, .command code { max-width: none; } .commandValue { flex-wrap: wrap; } .filters { justify-content: stretch; } .filters > * { flex: 1 1 160px; } .securityGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .securityGrid > div:nth-child(2) { border-right: 0; } .securityGrid > div:nth-child(n + 3) { border-top: 1px solid var(--app-border-subtle); } .sourcesWorkspace, .bundleBody { grid-template-columns: 1fr; } .fileTree { max-height: 220px; border-right: 0; border-bottom: 1px solid var(--app-border-subtle); } .identity dl { grid-template-columns: 1fr; } }
-@media (max-width: 640px) { .drawerForm, .grantAdd { grid-template-columns: 1fr; } .securityGrid { grid-template-columns: 1fr; } .securityGrid > div { border-right: 0; border-bottom: 1px solid var(--app-border-subtle); } .securityGrid > div:last-child { border-bottom: 0; } .reviewRow, .sourceRow { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 640px) { .releaseEditor { gap: 16px; padding: 20px 18px 28px; } .drawerForm, .grantAdd { grid-template-columns: 1fr; } .fileField { padding: 14px; } .securityGrid { grid-template-columns: 1fr; } .securityGrid > div { border-right: 0; border-bottom: 1px solid var(--app-border-subtle); } .securityGrid > div:last-child { border-bottom: 0; } .reviewRow, .sourceRow { align-items: flex-start; flex-direction: column; } }
