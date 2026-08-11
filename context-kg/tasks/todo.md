@@ -12860,3 +12860,20 @@ OrbStack，完成真实 MySQL/API、Console 与集群运行态验收。
   `output/playwright/skill-marketplace-orbstack-empty-dark-720.png`。
 - 当前 Registry 无 published Release，因此没有制造生产夹具来伪装 CLI 实装成功；真实 CLI install/verify/remove、
   外部 GitHub/HTTP Registry 同步、正式 specification tag 与统一 RBAC/审计仍是后续边界。
+
+## Skill 市场中文产品命名修正（2026-08-12）
+
+- [x] 盘点中文导航、页面标题、面包屑、通知和空状态中的 Marketplace 命名。
+- [x] 中文界面统一使用“Skill 市场”，英文 locale 保持“Skill Marketplace”。
+- [x] 补充静态契约并完成 Console 构建与 context-kg lint。
+- [x] 推送 `develop`、重建 OrbStack，并用真实浏览器验证中英文切换。
+
+### Review
+
+- `develop` 提交 `5a8a8d3a` 已推送；中文 locale 使用“Skill 市场”，英文 locale 保留
+  `Skill Marketplace`，列表与详情页的页头、通知、空状态和可访问名称统一跟随 locale key。
+- 干净提交树上 `npm run test:skill-marketplace` 和 release 构建通过；当前工作树 lint 仅有既有 warning。
+- OrbStack 运行镜像 `sha256:d6cb34a82c31e16ceb8f2940e896f2fad69bcd5c12c7717856f912a80b1e8079`，
+  Pod `pole-control-plane-6959c8f67c-pl4cj` Ready、零重启，日志未发现 panic/fatal/error。
+- Playwright 在真实 `pole.localhost` 会话验证中文菜单、页头、说明区均为“Skill 市场”；
+  切换英文后菜单与页头为 `Skill Marketplace`，浏览器控制台零错误。

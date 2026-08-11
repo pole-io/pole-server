@@ -1611,6 +1611,14 @@ sources: 0
   - OrbStack 已部署提交树镜像，验证 MySQL schema、公共/认证 API、真实 Console 深链、暗色窄视口和刷新返回。
   - 空 Registry 下未伪造已发布 Release，CLI 真实安装和外部 Registry 同步保留为明确未验收边界。
 
+## [2026-08-12] fix | Skill 市场中文产品命名
+
+- 更新页面：todo、lessons、log。
+- 变更摘要：
+  - 中文 locale 统一为“Skill 市场”，英文 locale 保留 `Skill Marketplace`。
+  - 列表与详情页的页头、通知、空状态和可访问名称统一跟随 locale key。
+  - 干净构建、OrbStack 部署和真实浏览器中英文切换验收通过。
+
 ## 相关页面
 
 - [[index]]
