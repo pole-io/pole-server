@@ -12906,3 +12906,22 @@ OrbStack，完成真实 MySQL/API、Console 与集群运行态验收。
   Pod `pole-control-plane-78bd85d965-ls9kv` Ready、零重启，日志未见 panic/fatal/error，产品入口返回 200。
 - Playwright 在真实部署中验证六个导入字段、连续输入、私有可见性、扫描动作和 720/620px
   响应式布局；干净会话控制台零错误。当前数据库无 Publisher，因此未伪造身份执行真实市场写入。
+
+## Skill 市场发布表单安全留白优化（2026-08-12）
+
+- [x] 定位上传与 Git 导入抽屉的布局责任，确认不扩大到共享 EditorDrawer 全局行为。
+- [x] 为发布表单建立正文安全留白、响应式网格和主题化文件上传控件。
+- [x] 增加专项契约，运行 Console lint、构建与 context-kg 校验。
+- [x] 更新 OrbStack，并在桌面与窄屏真实浏览器中验证间距、输入、文件焦点和控制台状态。
+- [x] 按功能边界提交并推送 `develop`。
+
+### Review
+
+- 代码提交 `ffaa900d` 已推送 `develop`；改动只落在 Skill 市场上传/Git 表单和专项契约，没有改变共享
+  EditorDrawer 的 20 个调用入口。
+- `test:skill-marketplace`、目标 oxlint、工作区与干净提交树 release build、context-kg lint 和 diff 检查通过。
+  工作区未提交的 EditorDrawer 校验脚本未被当作 `develop` 干净树证据。
+- OrbStack 镜像为 `sha256:6801c4a6083508b1500e49c7fba127a271cce60cc1991913b4e738daefff2192`，
+  Pod `pole-control-plane-5f5db95d6b-zxkkt` Ready、零重启，近期日志无 panic/fatal/error，入口返回 200。
+- Playwright 在真实部署量测上传和 Git 抽屉：1280px 视口左右正文留白均为 28px，620px 时均为 18px并切为
+  单列；正文和页面横向溢出均为 0，连续输入保持，文件控件获得 2px 可见焦点，控制台 0 error/0 warning。
