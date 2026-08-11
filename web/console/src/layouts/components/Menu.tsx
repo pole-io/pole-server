@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 
 const getSelectedMenuValue = (pathname: string) => {
   if (pathname === '/governance' || pathname.startsWith('/governance/')) return '/governance/workbench';
+  if (pathname.startsWith('/ai/skills/')) return '/ai/skills';
   return pathname;
 };
 

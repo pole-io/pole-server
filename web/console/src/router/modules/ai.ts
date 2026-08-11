@@ -47,6 +47,21 @@ const ai: IRouter[] = [
           hidden: true,
         },
       },
+      {
+        path: 'skills',
+        Component: lazy(() => import('pages/AI/Skills')),
+        meta: {
+          title: 'menu.ai.skills',
+        },
+      },
+      {
+        path: 'skills/:publisher/:name',
+        Component: lazy(() => import('pages/AI/Skills/Detail')),
+        meta: {
+          title: 'menu.ai.skills',
+          hidden: true,
+        },
+      },
     ],
   },
 ];

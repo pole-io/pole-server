@@ -24,6 +24,7 @@
   "menu.ai": "AI Tools",
   "menu.ai.a2a": "A2A Agents",
   "menu.ai.mcp": "MCP Service",
+  "menu.ai.skills": "Skill Marketplace",
   "menu.auth": "Auth Management",
   "menu.auth.principals": "Principals",
   "menu.auth.policies": "Policies",

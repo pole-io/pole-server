@@ -1,0 +1,72 @@
+.page { min-width: 0; color: var(--app-text); }
+.intro, .releaseControl, .command { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 18px; padding: 16px 18px; border: 1px solid var(--app-border-subtle); border-radius: 8px; background: var(--app-surface-subtle); }
+.intro div, .releaseControl div, .command div { display: grid; gap: 4px; }
+.intro strong, .releaseControl strong, .command strong { font-size: 14px; font-weight: 650; }
+.intro span, .releaseControl span, .command span, .cellStack small { color: var(--app-text-secondary); font-size: 12px; line-height: 18px; }
+.intro code, .command code { max-width: 52%; overflow: auto; padding: 8px 10px; border-radius: 4px; background: var(--app-surface); color: var(--app-text); font-size: 12px; white-space: nowrap; }
+.commandValue { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.commandValue code { max-width: none; }
+.copyStatus { color: var(--app-text-secondary); font-size: 12px; }
+.accessPolicy { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; padding: 14px 16px; border: 1px solid var(--app-border-subtle); border-radius: 8px; background: var(--app-surface); }
+.accessPolicy > div { display: grid; gap: 4px; }
+.accessPolicy strong { font-size: 14px; }
+.accessPolicy span, .accessPolicy small { color: var(--app-text-secondary); font-size: 12px; line-height: 18px; }
+.grantDrawer { display: grid; gap: 16px; }
+.grantAdd { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 8px; }
+.grantList { display: grid; gap: 8px; }
+.grantRow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--app-border-subtle); }
+.grantRow code { flex: 1; overflow: hidden; color: var(--app-text); text-overflow: ellipsis; white-space: nowrap; }
+.filters { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.filters > :first-child { min-width: 220px; }
+.table { border: 1px solid var(--app-border-subtle); border-radius: 8px; background: var(--app-surface); }
+.skillLink { display: grid; width: 100%; gap: 3px; padding: 2px 0; border: 0; background: transparent; color: var(--app-text); text-align: left; cursor: pointer; }
+.skillLink:hover strong { color: var(--app-brand); text-decoration: underline; }
+.skillLink span { color: var(--app-text-secondary); font-size: 12px; }
+.skillLink small { overflow: hidden; color: var(--app-text-secondary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.cellStack { display: grid; gap: 3px; min-width: 0; }
+.cellStack small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.error { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; padding: 12px 14px; border-left: 3px solid var(--app-danger); background: var(--app-status-error-subtle); color: var(--app-text); }
+.error span { flex: 1; color: var(--app-text-secondary); font-size: 13px; }
+.drawerForm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.drawerForm label, .sourceCreate label { display: grid; gap: 7px; color: var(--app-text); font-size: 13px; }
+.drawerForm label > span, .sourceCreate label > span { font-weight: 600; }
+.fileField { grid-column: 1 / -1; padding: 12px; border: 1px dashed var(--app-border-subtle); border-radius: 6px; }
+.fileField input { max-width: 100%; color: var(--app-text-secondary); }
+.fileField small { color: var(--app-text-secondary); font-size: 12px; }
+.workspaceList, .sourcesWorkspace { display: grid; gap: 14px; }
+.reviewRow, .sourceRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--app-border-subtle); }
+.reviewRow > div, .sourceRow > div { display: grid; min-width: 0; gap: 4px; }
+.reviewRow span, .sourceRow span, .sourceRow small { overflow: hidden; color: var(--app-text-secondary); font-size: 12px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.sourcesWorkspace { grid-template-columns: minmax(280px, .7fr) minmax(0, 1.3fr); }
+.sourceCreate, .sourceList { display: grid; align-content: start; gap: 12px; padding: 16px; border: 1px solid var(--app-border-subtle); border-radius: 8px; }
+.sourceCreate h3, .sourceList h3 { margin: 0; font-size: 14px; }
+
+.identity { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr); gap: 28px; margin-bottom: 18px; padding: 20px 0; border-bottom: 1px solid var(--app-border-subtle); }
+.identity h2 { margin: 0 0 8px; font-size: 26px; line-height: 34px; }
+.identity p { margin: 0; color: var(--app-text-secondary); line-height: 22px; }
+.tagRow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.identity dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.identity dl div { min-width: 0; }
+.identity dt { margin-bottom: 4px; color: var(--app-text-secondary); font-size: 12px; }
+.identity dd { margin: 0; overflow: hidden; color: var(--app-text); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.versionSelect { min-width: 220px; }
+.securityGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 18px; border: 1px solid var(--app-border-subtle); border-radius: 8px; background: var(--app-surface); }
+.securityGrid > div { display: grid; gap: 7px; min-width: 0; padding: 14px 16px; border-right: 1px solid var(--app-border-subtle); }
+.securityGrid > div:last-child { border-right: 0; }
+.securityGrid span { color: var(--app-text-secondary); font-size: 12px; }
+.securityGrid strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.bundleWorkspace { overflow: hidden; border: 1px solid var(--app-border-subtle); border-radius: 8px; background: var(--app-surface); }
+.bundleWorkspace > header, .filePreview > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--app-border-subtle); }
+.bundleWorkspace > header div { display: grid; gap: 3px; }
+.bundleWorkspace > header span, .filePreview > header span { color: var(--app-text-secondary); font-size: 12px; }
+.bundleBody { display: grid; grid-template-columns: minmax(240px, .36fr) minmax(0, 1fr); min-height: 440px; }
+.fileTree { overflow: auto; padding: 8px; border-right: 1px solid var(--app-border-subtle); background: var(--app-surface-subtle); }
+.fileTree button { display: flex; justify-content: space-between; width: 100%; gap: 8px; padding: 7px 8px; border: 0; border-radius: 4px; background: transparent; color: var(--app-text); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.fileTree button:hover, .fileTree .fileSelected { background: var(--app-brand-subtle); }
+.fileTree small { color: var(--app-text-secondary); white-space: nowrap; }
+.filePreview { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; }
+.filePreview pre { overflow: auto; margin: 0; padding: 16px; background: var(--app-surface); color: var(--app-text); font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
+.filePreview :global(.fluent-empty) { align-self: center; }
+
+@media (max-width: 920px) { .intro, .releaseControl, .command, .identity, .accessPolicy { grid-template-columns: 1fr; flex-direction: column; align-items: stretch; } .intro code, .command code { max-width: none; } .commandValue { flex-wrap: wrap; } .filters { justify-content: stretch; } .filters > * { flex: 1 1 160px; } .securityGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .securityGrid > div:nth-child(2) { border-right: 0; } .securityGrid > div:nth-child(n + 3) { border-top: 1px solid var(--app-border-subtle); } .sourcesWorkspace, .bundleBody { grid-template-columns: 1fr; } .fileTree { max-height: 220px; border-right: 0; border-bottom: 1px solid var(--app-border-subtle); } .identity dl { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .drawerForm, .grantAdd { grid-template-columns: 1fr; } .securityGrid { grid-template-columns: 1fr; } .securityGrid > div { border-right: 0; border-bottom: 1px solid var(--app-border-subtle); } .securityGrid > div:last-child { border-bottom: 0; } .reviewRow, .sourceRow { align-items: flex-start; flex-direction: column; } }

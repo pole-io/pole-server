@@ -38,6 +38,13 @@ const normalizePath = (path: string) => {
   return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
 };
 
+/** 保持既有静态路由优先，同时允许受控的 :param 深链（如 /ai/skills/:publisher/:name）。 */
+const routeMatches = (pattern: string, pathname: string) => {
+  const expected = normalizePath(pattern).split('/').filter(Boolean);
+  const actual = normalizePath(pathname).split('/').filter(Boolean);
+  return expected.length === actual.length && expected.every((segment, index) => segment.startsWith(':') || segment === actual[index]);
+};
+
 const normalizeBase = (basename?: string) => {
   if (!basename || basename === '/') return undefined;
   return normalizePath(basename);
@@ -89,9 +96,13 @@ export const Route: React.FC<RouteProps> = () => null;
 export const Routes: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { pathname } = useLocation();
   const currentPath = normalizePath(pathname);
-  const match = React.Children.toArray(children).find((child) => (
+  const childrenArray = React.Children.toArray(children);
+  const match = childrenArray.find((child) => (
     React.isValidElement<RouteProps>(child)
     && normalizePath(child.props.path) === currentPath
+  )) || childrenArray.find((child) => (
+    React.isValidElement<RouteProps>(child)
+    && routeMatches(child.props.path, currentPath)
   ));
   return React.isValidElement<RouteProps>(match) ? <>{match.props.element}</> : null;
 };
