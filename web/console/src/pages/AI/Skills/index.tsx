@@ -252,7 +252,7 @@ const SkillMarketplacePage: React.FC = () => {
       </Loading>
 
       <EditorDrawer visible={drawer === 'upload'} width="wide" title="上传 Skill Bundle" description="发布版本不可修改；公共 Release 必须含有效 Ed25519 detached signature 并通过审核。" onClose={closeDrawer} footer={<EditorDrawerActions onCancel={closeDrawer} onSubmit={submitUpload} submitText="提交 Release" submitting={submitting} />}>
-        <div className={style.releaseEditor}>
+        <div className={style.drawerContent}>
           <div className={style.drawerForm}>
             <label><span>Publisher</span><Input value={upload.publisher} placeholder="例如 pole" onChange={(value) => setUpload({ ...upload, publisher: value })} /></label>
             <label><span>Skill 名称</span><Input value={upload.name} placeholder="例如 incident-response" onChange={(value) => setUpload({ ...upload, name: value })} /></label>
@@ -265,7 +265,7 @@ const SkillMarketplacePage: React.FC = () => {
       </EditorDrawer>
 
       <EditorDrawer visible={drawer === 'git'} width="wide" title="从 Git 导入 Release" description="只接受明确的 Tag 或 Release；先解析到不可变 commit 并预览 Skill，再逐项冻结 Bundle 摘要。" onClose={closeDrawer} footer={<EditorDrawerActions onCancel={closeDrawer} onSubmit={submitGitImport} submitText={gitResult ? '重新扫描' : gitDiscovery ? `导入全部 ${gitDiscovery.items.length} 个 Skill` : '扫描 Skill'} submitting={submitting} />}>
-        <div className={style.releaseEditor}>
+        <div className={style.drawerContent}>
           <div className={style.drawerForm}>
             <label><span>仓库地址</span><Input value={gitImport.repository_url} placeholder="https://github.com/org/repo" onChange={(value) => updateGitImport({ repository_url: value })} /></label>
             <label><span>Tag / Release</span><Input value={gitImport.reference} placeholder="v1.2.0" onChange={(value) => updateGitImport({ reference: value })} /></label>
@@ -285,13 +285,17 @@ const SkillMarketplacePage: React.FC = () => {
       </EditorDrawer>
 
       <EditorDrawer visible={drawer === 'reviews'} width="workspace" title="公共 Release 审核工作台" description="审核决定只切换 Release 状态；已发布 Bundle、版本与摘要始终不可编辑。" onClose={closeDrawer} footer={false}>
-        <div className={style.workspaceList}>{reviews.length ? reviews.map((review) => <article className={style.reviewRow} key={review.id}><div><strong>{review.publisher}/{review.name}@{review.version}</strong><span>签名：{review.signature_status || '待验证'} · 扫描：{review.scan_status || '待验证'} · 请求于 {review.requested_at || '-'}</span></div><Space><Button size="small" variant="outline" onClick={() => void decideReview(review, 'rejected')}>拒绝</Button><Button size="small" theme="primary" onClick={() => void decideReview(review, 'approved')}>通过</Button></Space></article>) : <Empty title="没有待审核的公共 Release" description="受信 Publisher 可在通过自动扫描后直接发布。" />}</div>
+        <div className={style.drawerContent}>
+          <div className={style.workspaceList}>{reviews.length ? reviews.map((review) => <article className={style.reviewRow} key={review.id}><div><strong>{review.publisher}/{review.name}@{review.version}</strong><span>签名：{review.signature_status || '待验证'} · 扫描：{review.scan_status || '待验证'} · 请求于 {review.requested_at || '-'}</span></div><Space><Button size="small" variant="outline" onClick={() => void decideReview(review, 'rejected')}>拒绝</Button><Button size="small" theme="primary" onClick={() => void decideReview(review, 'approved')}>通过</Button></Space></article>) : <Empty title="没有待审核的公共 Release" description="受信 Publisher 可在通过自动扫描后直接发布。" />}</div>
+        </div>
       </EditorDrawer>
 
       <EditorDrawer visible={drawer === 'sources'} width="workspace" title="Registry Source 管理" description="定期同步目录；镜像的精确 Release 与摘要不会被上游同版本替换静默覆盖。" onClose={closeDrawer} footer={false}>
-        <div className={style.sourcesWorkspace}>
-          <section className={style.sourceCreate}><h3>新增来源</h3><label><span>名称</span><Input value={sourceDraft.name} onChange={(value) => setSourceDraft({ ...sourceDraft, name: value })} /></label><label><span>地址</span><Input value={sourceDraft.url} placeholder="https://registry.example.com" onChange={(value) => setSourceDraft({ ...sourceDraft, url: value })} /></label><label><span>类型</span><Select options={sourceOptions.slice(1)} value={sourceDraft.type} onChange={(value: string) => setSourceDraft({ ...sourceDraft, type: value })} /></label><label><span>信任级别</span><Select options={[{ label: '不受信（隔离）', value: 'untrusted' }, { label: '受信', value: 'trusted' }]} value={sourceDraft.trust_level} onChange={(value: string) => setSourceDraft({ ...sourceDraft, trust_level: value })} /></label><Button theme="primary" loading={submitting} onClick={() => void submitSource()}>保存 Source</Button></section>
-          <section className={style.sourceList}><h3>已配置来源</h3>{sources.length ? sources.map((registry) => <article className={style.sourceRow} key={registry.id}><div><strong>{registry.name}</strong><span>{registry.type} · {registry.url}</span><small>信任：{registry.trust_level} · 上次同步：{registry.last_synced_at || '从未'}{registry.error_message ? ` · ${registry.error_message}` : ''}</small></div><Button size="small" variant="outline" onClick={() => void triggerSync(registry)}>立即同步</Button></article>) : <Empty title="尚未配置外部 Registry" description="可添加 Pole 原生、Git 或 HTTP Registry Source。" />}</section>
+        <div className={style.drawerContent}>
+          <div className={style.sourcesWorkspace}>
+            <section className={style.sourceCreate}><h3>新增来源</h3><label><span>名称</span><Input value={sourceDraft.name} onChange={(value) => setSourceDraft({ ...sourceDraft, name: value })} /></label><label><span>地址</span><Input value={sourceDraft.url} placeholder="https://registry.example.com" onChange={(value) => setSourceDraft({ ...sourceDraft, url: value })} /></label><label><span>类型</span><Select options={sourceOptions.slice(1)} value={sourceDraft.type} onChange={(value: string) => setSourceDraft({ ...sourceDraft, type: value })} /></label><label><span>信任级别</span><Select options={[{ label: '不受信（隔离）', value: 'untrusted' }, { label: '受信', value: 'trusted' }]} value={sourceDraft.trust_level} onChange={(value: string) => setSourceDraft({ ...sourceDraft, trust_level: value })} /></label><Button theme="primary" loading={submitting} onClick={() => void submitSource()}>保存 Source</Button></section>
+            <section className={style.sourceList}><h3>已配置来源</h3>{sources.length ? sources.map((registry) => <article className={style.sourceRow} key={registry.id}><div><strong>{registry.name}</strong><span>{registry.type} · {registry.url}</span><small>信任：{registry.trust_level} · 上次同步：{registry.last_synced_at || '从未'}{registry.error_message ? ` · ${registry.error_message}` : ''}</small></div><Button size="small" variant="outline" onClick={() => void triggerSync(registry)}>立即同步</Button></article>) : <Empty title="尚未配置外部 Registry" description="可添加 Pole 原生、Git 或 HTTP Registry Source。" />}</section>
+          </div>
         </div>
       </EditorDrawer>
     </div>

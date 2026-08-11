@@ -27,7 +27,8 @@
 .cellStack small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .error { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; padding: 12px 14px; border-left: 3px solid var(--app-danger); background: var(--app-status-error-subtle); color: var(--app-text); }
 .error span { flex: 1; color: var(--app-text-secondary); font-size: 13px; }
-.releaseEditor { display: grid; gap: 20px; min-width: 0; padding: 24px 28px 32px; }
+.drawerContent { display: grid; align-content: start; gap: 20px; min-width: 0; padding: 24px 28px 32px; }
+.drawerContent :global(.fluent-empty) { min-height: 160px; }
 .drawerForm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .drawerForm label, .sourceCreate label { display: grid; gap: 7px; color: var(--app-text); font-size: 13px; }
 .drawerForm label > span, .sourceCreate label > span { font-weight: 600; }
@@ -46,6 +47,7 @@
 .gitSkillRow:last-child { border-bottom: 0; }
 .workspaceList, .sourcesWorkspace { display: grid; gap: 14px; }
 .reviewRow, .sourceRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--app-border-subtle); }
+.reviewRow:last-child, .sourceRow:last-child { border-bottom: 0; }
 .reviewRow > div, .sourceRow > div { display: grid; min-width: 0; gap: 4px; }
 .reviewRow span, .sourceRow span, .sourceRow small { overflow: hidden; color: var(--app-text-secondary); font-size: 12px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
 .sourcesWorkspace { grid-template-columns: minmax(280px, .7fr) minmax(0, 1.3fr); }
@@ -80,4 +82,4 @@
 .filePreview :global(.fluent-empty) { align-self: center; }
 
 @media (max-width: 920px) { .intro, .releaseControl, .command, .identity, .accessPolicy { grid-template-columns: 1fr; flex-direction: column; align-items: stretch; } .intro code, .command code { max-width: none; } .commandValue { flex-wrap: wrap; } .filters { justify-content: stretch; } .filters > * { flex: 1 1 160px; } .securityGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .securityGrid > div:nth-child(2) { border-right: 0; } .securityGrid > div:nth-child(n + 3) { border-top: 1px solid var(--app-border-subtle); } .sourcesWorkspace, .bundleBody { grid-template-columns: 1fr; } .fileTree { max-height: 220px; border-right: 0; border-bottom: 1px solid var(--app-border-subtle); } .identity dl { grid-template-columns: 1fr; } }
-@media (max-width: 640px) { .releaseEditor { gap: 16px; padding: 20px 18px 28px; } .drawerForm, .grantAdd { grid-template-columns: 1fr; } .fileField { padding: 14px; } .securityGrid { grid-template-columns: 1fr; } .securityGrid > div { border-right: 0; border-bottom: 1px solid var(--app-border-subtle); } .securityGrid > div:last-child { border-bottom: 0; } .reviewRow, .sourceRow { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 640px) { .drawerContent { gap: 16px; padding: 20px 18px 28px; } .drawerForm, .grantAdd { grid-template-columns: 1fr; } .fileField { padding: 14px; } .securityGrid { grid-template-columns: 1fr; } .securityGrid > div { border-right: 0; border-bottom: 1px solid var(--app-border-subtle); } .securityGrid > div:last-child { border-bottom: 0; } .reviewRow, .sourceRow { align-items: flex-start; flex-direction: column; } }

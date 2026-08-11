@@ -148,10 +148,12 @@ const SkillMarketplaceDetailPage: React.FC = () => {
             </div></Loading>
           </section>
           <EditorDrawer visible={policyVisible} width="standard" title="私有 Skill 访问策略" description="只管理 User、UserGroup 与 Role 的读取授权；公共 Skill 不使用此策略。" onClose={() => setPolicyVisible(false)} footer={<EditorDrawerActions onCancel={() => setPolicyVisible(false)} onSubmit={() => void saveAccessPolicy()} submitText="保存策略" submitting={grantsSaving} />}>
-            <div className={style.grantDrawer}>
-              <div className={style.grantAdd}><Select aria-label="授权主体类型" options={principalTypeOptions} value={grantPrincipalType} onChange={(value: SkillGrantPrincipalType) => setGrantPrincipalType(value)} /><Input aria-label="授权主体 ID" value={grantPrincipalId} placeholder="User、UserGroup 或 Role ID" onChange={setGrantPrincipalId} onEnter={addGrant} /><Button variant="outline" onClick={addGrant}>添加</Button></div>
-              <Loading loading={grantsLoading} text="加载访问策略…"><div className={style.grantList}>{grants.length ? grants.map((grant) => <div className={style.grantRow} key={`${grant.principalType}:${grant.principalId}`}><Tag variant="outline">{grant.principalType}</Tag><code>{grant.principalId}</code><Button size="small" variant="outline" aria-label={`移除 ${grant.principalType} ${grant.principalId}`} onClick={() => setGrants((current) => current.filter((item) => item.principalType !== grant.principalType || item.principalId !== grant.principalId))}>移除</Button></div>) : <Empty title="尚无额外授权主体" description="Publisher Owner 始终保有私有 Skill 的管理能力。" />}</div></Loading>
-              <span className={style.copyStatus} role="status" aria-live="polite">{grantStatus}</span>
+            <div className={style.drawerContent}>
+              <div className={style.grantDrawer}>
+                <div className={style.grantAdd}><Select aria-label="授权主体类型" options={principalTypeOptions} value={grantPrincipalType} onChange={(value: SkillGrantPrincipalType) => setGrantPrincipalType(value)} /><Input aria-label="授权主体 ID" value={grantPrincipalId} placeholder="User、UserGroup 或 Role ID" onChange={setGrantPrincipalId} onEnter={addGrant} /><Button variant="outline" onClick={addGrant}>添加</Button></div>
+                <Loading loading={grantsLoading} text="加载访问策略…"><div className={style.grantList}>{grants.length ? grants.map((grant) => <div className={style.grantRow} key={`${grant.principalType}:${grant.principalId}`}><Tag variant="outline">{grant.principalType}</Tag><code>{grant.principalId}</code><Button size="small" variant="outline" aria-label={`移除 ${grant.principalType} ${grant.principalId}`} onClick={() => setGrants((current) => current.filter((item) => item.principalType !== grant.principalType || item.principalId !== grant.principalId))}>移除</Button></div>) : <Empty title="尚无额外授权主体" description="Publisher Owner 始终保有私有 Skill 的管理能力。" />}</div></Loading>
+                <span className={style.copyStatus} role="status" aria-live="polite">{grantStatus}</span>
+              </div>
             </div>
           </EditorDrawer>
         </>}
